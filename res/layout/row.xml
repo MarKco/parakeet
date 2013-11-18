@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_horizontal|center_vertical"
+    android:padding="0dip"
+    android:layout_margin="0dip"
+    android:descendantFocusability="blocksDescendants"
+    android:weightSum="11" >
+
+    <TextView
+        android:id="@+id/todo_name"
+        android:layout_width="0dip"
+        android:gravity="center_vertical"
+        android:layout_gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:layout_weight="5"
+        android:textSize="18dip"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/todo_length"
+        android:layout_width="0dip"
+        android:layout_height="wrap_content"
+        android:layout_weight="3"
+        android:gravity="center_vertical"
+        android:layout_gravity="center_vertical"
+        android:textSize="20dip" />
+
+    <CheckBox
+        android:id="@+id/todo_todo"
+        android:layout_width="0dip"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:gravity="center_horizontal|center_vertical"
+        android:layout_weight="2"/>
+    
+    <ImageButton
+        android:id="@+id/deleteRow"
+        android:layout_weight="0.3"
+        android:padding="2dip"
+        android:src="@drawable/ic_delete_property"
+        android:background="@android:color/transparent"
+        android:gravity="center_horizontal|center_vertical"
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>

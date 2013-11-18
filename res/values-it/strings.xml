@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Parakeet</string>
+    <string name="action_settings">Impostazioni</string>
+    <string name="to_do">Da fare</string>
+    <string name="set_time_to_leave">Cambia orario d\'uscita</string>
+    <string name="add_row_name_caption">Attività</string>
+    <string name="add_row_duration_caption">Durata (min.)</string>
+    <string name="add_activity_title">Aggiungi nuovo elemento</string>
+    <string name="modify_activity_title">Modifica un elemento della lista</string>
+    <string name="delete_activity_title">Cancella elemento</string>
+    <string name="delete_activity_text">Rimuovere questa voce della lista?</string>
+    <string name="delete_button_text">Rimuovi</string>
+    <string name="dialog_cancel">Annulla</string>
+    <string name="time_to_leave">Ora di uscita:</string>
+    <string name="button_set_alarm">Imposta sveglia</string>
+    <string name="button_add_row">Nuova riga</string>
+    <string name="first_launch_hint">Inserisci un orario di uscita cliccando sul timer qui sotto, poi seleziona le attività da compiere prima di uscire e punta la sveglia facendo tap sull\'icona.</string>
+    <string name="app_author"><a href="http://www.marcozanetti.it">Marco Zanetti</a></string>
+    <string name="author_email">Contattami: <a href="mailto:ilsecondodasinistra@gmail.com">ilsecondodasinistra@gmail.com</a></string>
+    <string name="app_info">A che ora devi alzarti domani?\n\nSembra una domanda facile, ma non lo è. Dipende tutto da quello che devi fare prima di uscire: magari pensi che domattina ti farai una doccia, o forse l\'hai già fatta stasera. Forse farai colazione, o forse no. Magari sai che dovrai portare fuori il cane, o fare il saluto al sole.\n\nScegliere il momento giusto per alzarsi non è facile perché, in realtà, quello che sai è soltanto a che ora dovrai essere fuori di casa. Ecco dove ti viene in aiuto Parakeet! Ti basta impostare l\'orario di uscita da casa e poi selezionare dalla lista le azioni che domani dovrai fare. Parakeet calcolerà per te il tempo necessario ed imposterà la sveglia per te.\n\nChiaramente ognuno di noi è diverso, così la lista delle azioni in Parakeet è completamente personalizzabile ed estendibile. Insomma, hai tutto quello che ti serve per svegliarti presto, ma non un minuto prima!\n\nProva Parakeet oggi, ti sveglierai più felice domani.</string>
+    <string name="app_changelog">Versione 1.0 - Prima versione.\n\nIl progetto grafico del logo è di <a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
+    <string name="changelog_title">Changelog</string>
+    <string name="action_about">Info su Parakeet</string>
+</resources>
