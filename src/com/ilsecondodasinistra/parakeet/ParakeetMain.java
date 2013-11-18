@@ -1,14 +1,12 @@
 package com.ilsecondodasinistra.parakeet;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Locale;
 
 import android.app.AlarmManager;
 import android.app.Dialog;
@@ -18,10 +16,13 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.AlarmClock;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -33,8 +34,8 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockActivity;
-import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
 import com.actionbarsherlock.view.Window;
 import com.google.analytics.tracking.android.EasyTracker;
@@ -66,12 +67,22 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 	
 	private Dialog dialog;
 	
+    private DrawerLayoutHelper drawerLayoutHelper;
+    ActionBar actionBar;
+    
+    SharedPreferences prefs;
+	
 //	ShowcaseView sv;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_parakeet_main);
+		prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		
+		/* Gets actionBar for ApplicationDrawer */
+		actionBar = getSupportActionBar();
+		actionBar.setTitle(getString(R.string.app_name));
 		
 		timeToWakeUp = (TextView) findViewById(R.id.timeToWakeUp);
 		firstLaunchHint = (TextView) findViewById(R.id.firstLaunchHint);
@@ -149,30 +160,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 			
 			@Override
 			public void onClick(View arg0) {
-				
-				/*
-				 * Sets notification when it's time to leave
-				 * Just in case you got stuck reading at the toilet
-				 * #TODO: Add optionality of notification
-				 */
-				Date now = new Date();
-//				if(config.getDateTimeToLeaveTimestamp() > now.getTime())
-//				{
-					Intent notiIntent = new Intent(getBaseContext(), com.ilsecondodasinistra.parakeet.NotificationService.class);
-					PendingIntent pi = PendingIntent.getService(getBaseContext(), 0, notiIntent, 0);
-					AlarmManager mAlarm = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
-					
-					mAlarm.set(AlarmManager.RTC_WAKEUP, config.getDateTimeToLeaveTimestamp(), pi);
-//				}
-				
-//				Toast.makeText(ParakeetMain.this, "Notification set at "+dateAndTimeFormatter.format(dateTimeToLeave.getTime()), 5000).show();
-				
-				//Sets alarm using external application
-				Intent i = new Intent(AlarmClock.ACTION_SET_ALARM); 
-				i.putExtra(AlarmClock.EXTRA_MESSAGE, "New Alarm"); 
-				i.putExtra(AlarmClock.EXTRA_HOUR, config.getDateTimeToWakeUp().getHours()); 
-				i.putExtra(AlarmClock.EXTRA_MINUTES, config.getDateTimeToWakeUp().getMinutes()); 
-				startActivity(i);
+				setAlarm();
 			}
 		});
 		
@@ -211,6 +199,24 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 //        sv = ShowcaseView.insertShowcaseView(target, this, R.string.app_name, R.string.modify_activity_title, co);
 //        sv.setOnShowcaseEventListener(this);
 
+		/*
+		 * Toggles handler for application drawer
+		 */
+        drawerLayoutHelper = new DrawerLayoutHelper(ParakeetMain.this, actionBar);
+        
+        /*
+         * If application drawer was never opened manually,
+         * automatically open it at first application run
+         */
+		final SharedPreferences settings = getPreferences(0);
+		if (settings.getBoolean("drawerFirstOpening", true))
+		{
+			drawerLayoutHelper.toggle();
+			
+			SharedPreferences.Editor editor = settings.edit();
+			editor.putBoolean("drawerFirstOpening", false);
+			editor.commit();
+		}
 	}
 
 	TimePickerDialog.OnTimeSetListener timePickerListener = new TimePickerDialog.OnTimeSetListener() {
@@ -363,14 +369,6 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
       config.saveAllData(settings);
     }
 	
-	@Override
-	public boolean onCreateOptionsMenu(com.actionbarsherlock.view.Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		MenuInflater inflater = getSupportMenuInflater();
-		inflater.inflate(R.menu.parakeet_main, menu);
-		return true;
-	}
-
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -381,12 +379,18 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 	 */
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		// TODO Auto-generated method stub
+		
+		if (item.getItemId() == android.R.id.home) {
+            drawerLayoutHelper.toggle();
+            return true;
+        }
+		
 		switch (item.getItemId()) {
 		case(R.id.action_about):
 			Intent aboutIntent = new Intent(ParakeetMain.this, AboutActivity.class);
 			startActivity(aboutIntent);
 		default:
+			drawerLayoutHelper.toggle();
 			return false;
 		}
 	}
@@ -454,4 +458,61 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
             break;
         }
     }
+    
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        drawerLayoutHelper.getDrawerToggle().syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        drawerLayoutHelper.getDrawerToggle().onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+
+            drawerLayoutHelper.toggle();
+
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    /*
+     * Action called when the user clicks on the "set alarm" button
+     * in the action bar or in the activity itself
+     */
+    public void setAlarm()
+    {
+		/*
+		 * Sets notification when it's time to leave
+		 * Just in case you got stuck reading at the toilet
+		 * #TODO: Add optionality of notification
+		 */
+		Date now = new Date();
+		boolean shouldThisBeNotified = prefs.getBoolean("notification_on_exit", true);
+		if(shouldThisBeNotified)
+//		if(config.getDateTimeToLeaveTimestamp() > now.getTime())
+		{
+			Intent notiIntent = new Intent(getBaseContext(), com.ilsecondodasinistra.parakeet.NotificationService.class);
+			PendingIntent pi = PendingIntent.getService(getBaseContext(), 0, notiIntent, 0);
+			AlarmManager mAlarm = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
+			
+			mAlarm.set(AlarmManager.RTC_WAKEUP, config.getDateTimeToLeaveTimestamp(), pi);
+		}
+		
+//		Toast.makeText(ParakeetMain.this, "Notification set at "+dateAndTimeFormatter.format(dateTimeToLeave.getTime()), 5000).show();
+		
+		//Sets alarm using external application
+		Intent i = new Intent(AlarmClock.ACTION_SET_ALARM); 
+		i.putExtra(AlarmClock.EXTRA_MESSAGE, "New Alarm"); 
+		i.putExtra(AlarmClock.EXTRA_HOUR, config.getDateTimeToWakeUp().getHours()); 
+		i.putExtra(AlarmClock.EXTRA_MINUTES, config.getDateTimeToWakeUp().getMinutes()); 
+		startActivity(i);
+    }
+    
 }

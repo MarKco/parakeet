@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ilsecondodasinistra.parakeet"
+    android:installLocation="auto"
     android:versionCode="3"
-    android:versionName="1.2"
-    android:installLocation="auto" >
+    android:versionName="1.2" >
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -31,8 +31,13 @@
         <service android:name="com.ilsecondodasinistra.parakeet.NotificationService" >
         </service>
 
-        <receiver android:name=".OnAlarmReceiver" >
+        <receiver android:name="com.ilsecondodasinistra.parakeet.OnAlarmReceiver" >
         </receiver>
+
+        <activity
+            android:name="settings.ParakeetSettingsActivity"
+            android:label="@string/title_activity_parakeet_settings" >
+        </activity>
     </application>
 
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />

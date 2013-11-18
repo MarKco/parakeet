@@ -4,120 +4,129 @@
     android:layout_height="match_parent"
     tools:context=".ParakeetMain" >
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_margin="0dip"
-        android:orientation="vertical"
-        android:padding="0dip"
-        android:weightSum="10" >
-
-        <TextView
-            android:id="@+id/timeToWakeUp"
-            android:layout_width="match_parent"
-            android:layout_height="0dip"
-            android:layout_weight="2"
-            android:background="#1e290a"
-            android:gravity="center_horizontal|center_vertical"
-            android:paddingBottom="4dip"
-            android:textAlignment="center"
-            android:textColor="#a9c606"
-            android:textSize="80dip"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/firstLaunchHint"
-            android:layout_width="match_parent"
-            android:layout_height="0dip"
-            android:layout_weight="2"
-            android:padding="4dip"
-            android:textAlignment="inherit"
-            android:textSize="18dip"
-            android:text="@string/first_launch_hint" />
+    <android.support.v4.widget.DrawerLayout
+        android:id="@+id/main_drawer"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" >
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dip"
-            android:layout_gravity="center_horizontal|center_vertical"
-            android:layout_weight="1"
-            android:background="#33a9c606"
-            android:gravity="center_horizontal|center_vertical"
-            android:orientation="horizontal" >
+            android:layout_height="match_parent"
+            android:layout_margin="0dip"
+            android:orientation="vertical"
+            android:padding="0dip"
+            android:weightSum="10" >
 
             <TextView
-                android:id="@+id/time_to_leave_label"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:gravity="right|center_vertical"
-                android:paddingRight="3dip"
-                android:text="@string/time_to_leave"
+                android:id="@+id/timeToWakeUp"
+                android:layout_width="match_parent"
+                android:layout_height="0dip"
+                android:layout_weight="2"
+                android:background="#1e290a"
+                android:gravity="center_horizontal|center_vertical"
+                android:paddingBottom="4dip"
+                android:textAlignment="center"
+                android:textColor="#a9c606"
+                android:textSize="80dip"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/firstLaunchHint"
+                android:layout_width="match_parent"
+                android:layout_height="0dip"
+                android:layout_weight="2"
+                android:padding="4dip"
+                android:text="@string/first_launch_hint"
+                android:textAlignment="inherit"
                 android:textSize="18dip" />
 
-            <TextView
-                android:id="@+id/timeToLeave"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:gravity="left|center_vertical"
-                android:textSize="22dip" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dip"
+                android:layout_gravity="center_horizontal|center_vertical"
+                android:layout_weight="1"
+                android:background="#33a9c606"
+                android:gravity="center_horizontal|center_vertical"
+                android:orientation="horizontal" >
 
-            <ImageButton
-                android:id="@+id/modify_timetoleave_button"
-                android:layout_width="22dip"
-                android:layout_height="24dip"
-                android:layout_gravity="left|center_vertical"
-                android:layout_margin="5dip"
-                android:background="@drawable/ic_pencil_blue" />
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/time_to_leave_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="right|center_vertical"
+                    android:paddingRight="3dip"
+                    android:text="@string/time_to_leave"
+                    android:textSize="18dip" />
 
-        <LinearLayout
-            android:layout_width="fill_parent"
-            android:layout_height="0dip"
-            android:layout_weight="1"
-            android:orientation="horizontal"
-            android:paddingBottom="2dip"
-            android:paddingLeft="4dip"
-            android:paddingRight="4dip"
-            android:paddingTop="2dip"
-            android:weightSum="4" >
+                <TextView
+                    android:id="@+id/timeToLeave"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="left|center_vertical"
+                    android:textSize="22dip" />
 
-            <ImageButton
-                android:id="@+id/set_alarm"
-                android:layout_width="0dip"
-                android:layout_height="fill_parent"
-                android:layout_weight="2"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_set_alarm" />
+                <ImageButton
+                    android:id="@+id/modify_timetoleave_button"
+                    android:layout_width="22dip"
+                    android:layout_height="24dip"
+                    android:layout_gravity="left|center_vertical"
+                    android:layout_margin="5dip"
+                    android:background="@drawable/ic_pencil_blue" />
+            </LinearLayout>
 
             <LinearLayout
-                android:layout_width="1dip"
-                android:layout_height="match_parent"
+                android:layout_width="fill_parent"
+                android:layout_height="0dip"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:paddingBottom="2dip"
+                android:paddingLeft="4dip"
+                android:paddingRight="4dip"
+                android:paddingTop="2dip"
+                android:weightSum="4" >
+
+                <ImageButton
+                    android:id="@+id/set_alarm"
+                    android:layout_width="0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="2"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_set_alarm" />
+
+                <LinearLayout
+                    android:layout_width="1dip"
+                    android:layout_height="match_parent"
+                    android:background="#a9c606" >
+                </LinearLayout>
+
+                <ImageButton
+                    android:id="@+id/new_thing"
+                    android:layout_width="0dip"
+                    android:layout_height="fill_parent"
+                    android:layout_weight="2"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_add_list" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="1dip"
                 android:background="#a9c606" >
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/new_thing"
-                android:layout_width="0dip"
-                android:layout_height="fill_parent"
-                android:layout_weight="2"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_add_list" />
+            <ListView
+                android:id="@+id/todoList"
+                android:layout_width="fill_parent"
+                android:layout_height="0dip"
+                android:layout_marginLeft="0dip"
+                android:layout_marginRight="0dip"
+                android:layout_weight="6"
+                android:focusable="true" >
+            </ListView>
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="1dip"
-            android:background="#a9c606" >
-        </LinearLayout>
-
-        <ListView
-            android:id="@+id/todoList"
-            android:layout_width="fill_parent"
-            android:layout_height="0dip"
-            android:layout_marginLeft="0dip"
-            android:layout_marginRight="0dip"
-            android:layout_weight="6"
-            android:focusable="true" >
-        </ListView>
-    </LinearLayout>
+        <!-- DRAWER LAYOUT - MENU -->
+        <include layout="@layout/drawer_layout" />
+    </android.support.v4.widget.DrawerLayout>
 
 </RelativeLayout>
