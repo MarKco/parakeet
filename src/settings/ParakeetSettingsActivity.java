@@ -1,5 +1,7 @@
 package settings;
 
+import java.util.List;
+
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -11,17 +13,15 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
 import android.text.TextUtils;
 
-import java.util.List;
-
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.app.SherlockPreferenceActivity;
+import com.actionbarsherlock.view.MenuItem;
 import com.ilsecondodasinistra.parakeet.R;
-import com.ilsecondodasinistra.parakeet.R.string;
-import com.ilsecondodasinistra.parakeet.R.xml;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -34,7 +34,7 @@ import com.ilsecondodasinistra.parakeet.R.xml;
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class ParakeetSettingsActivity extends PreferenceActivity {
+public class ParakeetSettingsActivity extends SherlockPreferenceActivity {
 	/**
 	 * Determines whether to always show the simplified settings UI, where
 	 * settings are presented in a single list. When false, settings are shown
@@ -42,12 +42,15 @@ public class ParakeetSettingsActivity extends PreferenceActivity {
 	 * shown on tablets.
 	 */
 	private static final boolean ALWAYS_SIMPLE_PREFS = false;
-
+	final static String KEY_DISPLAY_OPT = "KEY_Display_Option";
+	
 	@Override
 	protected void onPostCreate(Bundle savedInstanceState) {
 		super.onPostCreate(savedInstanceState);
 
 		setupSimplePreferencesScreen();
+		ActionBar actionBar = getSupportActionBar();
+		actionBar.setDisplayHomeAsUpEnabled(true);
 	}
 
 	/**
@@ -256,4 +259,33 @@ public class ParakeetSettingsActivity extends PreferenceActivity {
 			bindPreferenceSummaryToValue(findPreference("sync_frequency"));
 		}
 	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		  case android.R.id.home:
+		   this.finish();
+           return true;    
+		  }
+
+		return super.onOptionsItemSelected(item);
+	}
+	
+	@Override
+	 protected void onSaveInstanceState(Bundle outState) {
+	  // TODO Auto-generated method stub
+	  super.onSaveInstanceState(outState);
+	  outState.putInt(KEY_DISPLAY_OPT, getSupportActionBar().getDisplayOptions());
+	 }
+	
+	@Override
+	 protected void onRestoreInstanceState(Bundle savedInstanceState) {
+	  // TODO Auto-generated method stub
+	  super.onRestoreInstanceState(savedInstanceState);
+	  int savedDisplayOpt = savedInstanceState.getInt(KEY_DISPLAY_OPT);
+	  if(savedDisplayOpt != 0){
+	   getSupportActionBar().setDisplayOptions(savedDisplayOpt);
+	  }
+	 }
+
 }

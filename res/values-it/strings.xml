@@ -22,4 +22,21 @@
     <string name="app_changelog">Versione 1.0 - Prima versione.\n\nIl progetto grafico del logo è di <a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
     <string name="changelog_title">Changelog</string>
     <string name="action_about">Info su Parakeet</string>
+    
+    <!-- Time-to-leave Notification -->
+    <string name="notification_time_to_leave_text">E\'ora di andare! Metti giù le parole crociate, esci dal bagno e corri!</string>
+    <string name="notification_time_to_leave_title">Ora di uscire!</string>
+    
+    <!-- Application Drawer -->
+    <string name="title_activity_settings">Menu</string>
+    <string name="drawer_open">Menu</string>
+    <string name="drawer_close">Parakeet</string>
+	<string name="notification_on_leaving">Notifica quando è ora di uscire</string>
+	
+	<string name="whatsnew">
+        - Aggiunto il menu a sinistra\n
+        - Aggiunta una notifica quando è ora di uscire. Tale notifica può essere disabilitata nelle impostazioni\n 
+        - Aggiunta questa finestra che spiega cosa c\'è di nuovo :-)\n
+    </string>
+    
 </resources>

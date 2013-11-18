@@ -23,8 +23,9 @@
     <string name="app_changelog">Version 1.0 - First Version.\n\nLogo by<a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
     <string name="changelog_title">Changelog</string>
     <string name="action_about">About Parakeet</string>
+
     <!-- Time-to-leave Notification -->
-    <string name="notification_time_to_leave_text">It\'s time to leave! Get dressed and reach for the door!</string>
+    <string name="notification_time_to_leave_text">It\'s time to leave! Drop the crosswords, get dressed and reach for the door!</string>
     <string name="notification_time_to_leave_title">Time to leave!</string>
 
     <!-- Application Drawer -->
@@ -32,5 +33,10 @@
     <string name="drawer_open">Options Menu</string>
     <string name="drawer_close">Parakeet</string>
 	<string name="notification_on_leaving">Notification on exit time</string>
-
+	
+	<string name="whatsnew">
+        - Added application drawer on the left\n
+        - Added a notification when it\'s exit time. You can disable it in the new Settings screen\n 
+        - Added this What\'s new screen\n
+    </string>
 </resources>

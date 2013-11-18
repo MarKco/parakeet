@@ -113,11 +113,13 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 
 		checkSavedTimes();
 		
+	    // Show the "What's New" screen once for each new release of the application
+	    new WhatsNewScreen(this).show();
+		
 		/*
 		 * Deletes all notifications
 		 */
-		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		mNotificationManager.cancelAll(); //When application is open all its notifications must be deleted
+	    deleteAllNotifications();
 
 		listOfToDo = (ListView) findViewById(R.id.todoList);
 		
@@ -515,4 +517,18 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 		startActivity(i);
     }
     
+    /*
+     * Deletes all notifications
+     */
+    private void deleteAllNotifications() {
+		NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotificationManager.cancelAll(); //When application is open all its notifications must be deleted
+		
+		Intent i = new Intent(getBaseContext(), NotificationService.class);
+		PendingIntent pi = PendingIntent.getService(getBaseContext(), 0, i, 0);
+		AlarmManager mAlarm = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
+
+	    mAlarm.cancel(pi);
+	    pi.cancel();
+    }
 }
