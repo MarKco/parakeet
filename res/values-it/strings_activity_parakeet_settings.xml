@@ -1,0 +1,11 @@
+<resources>
+
+    <string name="title_activity_parakeet_settings">Impostazioni</string>
+
+    <!-- Strings NOT inserted by Eclipse -->
+    <string name="reset_notifications">Cancella tutte le notifiche</string>
+    <string name="reset_notifications_summary">Cancella tutte le notifiche che l\'app potrebbe aver già impostato. Attenzione, NON cancella eventuali sveglie impostate.</string>
+    <string name="notification_on_exit">Notifica al momento dell\'uscita</string>
+    <string name="notification_on_exit_summary">Se è abilitato l\'app avverte con una notifica quando è ora di uscire in modo da non perdere il momento prezioso.</string>
+    
+</resources>

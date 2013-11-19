@@ -38,6 +38,10 @@ import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockActivity;
 import com.actionbarsherlock.view.MenuItem;
 import com.actionbarsherlock.view.Window;
+import com.espian.showcaseview.ShowcaseView;
+import com.espian.showcaseview.ShowcaseViews;
+import com.espian.showcaseview.ShowcaseViews.ItemViewProperties;
+import com.espian.showcaseview.targets.ViewTarget;
 import com.google.analytics.tracking.android.EasyTracker;
 import com.ilsecondodasinistra.parakeet.CustomAdapter.ThingToDoCallback;
 
@@ -72,7 +76,10 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
     
     SharedPreferences prefs;
 	
-//	ShowcaseView sv;
+	ShowcaseView showcaseView;
+	ShowcaseView.ConfigOptions mOptions = new ShowcaseView.ConfigOptions();
+    public static final float SHOWCASE_SPINNER_SCALE = 1f;
+    public static final float SHOWCASE_OVERFLOW_ITEM_SCALE = 0.5f;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -194,31 +201,63 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 			}
 		});
 		
-//		ShowcaseView.ConfigOptions co = new ShowcaseView.ConfigOptions();
-//        co.hideOnClickOutside = true;
-//		
-//        ViewTarget target = new ViewTarget(R.id.set_alarm, this);
-//        sv = ShowcaseView.insertShowcaseView(target, this, R.string.app_name, R.string.modify_activity_title, co);
-//        sv.setOnShowcaseEventListener(this);
-
 		/*
 		 * Toggles handler for application drawer
 		 */
         drawerLayoutHelper = new DrawerLayoutHelper(ParakeetMain.this, actionBar);
+		
+        ShowcaseViews views = new ShowcaseViews(this, new ShowcaseViews.OnShowcaseAcknowledged() {
+            @Override
+            public void onShowCaseAcknowledged(ShowcaseView showcaseView) {
+                /*
+                 * If application drawer was never opened manually,
+                 * automatically open it at first application run
+                 */
+        		final SharedPreferences settings = getPreferences(0);
+        		if (settings.getBoolean("drawerFirstOpening", true))
+        		{
+        			drawerLayoutHelper.toggle();
+        			
+        			SharedPreferences.Editor editor = settings.edit();
+        			editor.putBoolean("drawerFirstOpening", false);
+        			editor.commit();
+        		}
+            }
+        });
+
+        mOptions.block = false;
         
-        /*
-         * If application drawer was never opened manually,
-         * automatically open it at first application run
-         */
-		final SharedPreferences settings = getPreferences(0);
-		if (settings.getBoolean("drawerFirstOpening", true))
-		{
-			drawerLayoutHelper.toggle();
-			
-			SharedPreferences.Editor editor = settings.edit();
-			editor.putBoolean("drawerFirstOpening", false);
-			editor.commit();
-		}
+		ShowcaseView.ConfigOptions options = new ShowcaseView.ConfigOptions();
+//		options.shotType = ShowcaseView.TYPE_NO_LIMIT;
+		options.shotType = ShowcaseView.TYPE_ONE_SHOT;
+		options.showcaseId = 1234;
+		
+		views.addView(new ItemViewProperties(R.id.time_to_leave_label, 
+				R.string.time_to_leave_help_1, 
+				R.string.time_to_leave_help_2, 
+				options));
+		
+		ShowcaseView.ConfigOptions showcaseConfigOptions = new ShowcaseView.ConfigOptions();
+        showcaseConfigOptions.block = true;
+        showcaseConfigOptions.shotType = ShowcaseView.TYPE_ONE_SHOT;
+        showcaseConfigOptions.fadeInDuration = 200;
+        showcaseConfigOptions.fadeOutDuration = 200;
+		showcaseConfigOptions.hideOnClickOutside = false;
+
+		views.addView(new ItemViewProperties(R.id.new_thing, 
+				R.string.new_thing_help_1, 
+				R.string.new_thing_help_2, 
+				showcaseConfigOptions));
+
+		views.addView(new ItemViewProperties(R.id.set_alarm, 
+				R.string.set_alarm_help_1, 
+				R.string.set_alarm_help_2, 
+				showcaseConfigOptions));
+
+		views.show();
+//        ViewTarget target = new ViewTarget(R.id.set_alarm, this);
+//        showcaseView = ShowcaseView.insertShowcaseView(target, this, R.string.string_1, R.string.string_2, showcaseConfigOptions);
+
 	}
 
 	TimePickerDialog.OnTimeSetListener timePickerListener = new TimePickerDialog.OnTimeSetListener() {
@@ -495,8 +534,8 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 		 * Just in case you got stuck reading at the toilet
 		 * #TODO: Add optionality of notification
 		 */
-		Date now = new Date();
 		boolean shouldThisBeNotified = prefs.getBoolean("notification_on_exit", true);
+		Date moment = new Date(config.getDateTimeToLeaveTimestamp());
 		if(shouldThisBeNotified)
 //		if(config.getDateTimeToLeaveTimestamp() > now.getTime())
 		{

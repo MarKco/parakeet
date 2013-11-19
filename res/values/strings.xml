@@ -39,4 +39,14 @@
         - Added a notification when it\'s exit time. You can disable it in the new Settings screen\n 
         - Added this What\'s new screen\n
     </string>
+    
+	<!-- Help overlay -->
+	<string name="help_finished">The short guide (wasn\'t it short?) has finished, now feel free to use the app!</string>
+	<string name="time_to_leave_help_1">When should you go?</string>
+	<string name="time_to_leave_help_2">Here you can set the time you should leave</string>
+	<string name="new_thing_help_1">Add things to do</string>
+	<string name="new_thing_help_2">If you need to add a new thing to do use this.</string>
+	<string name="set_alarm_help_1">Set alarm</string>
+	<string name="set_alarm_help_2">Once you\'re done, you can trigger the alarm by tapping here</string>
+	<string name="next_help">Next</string>
 </resources>

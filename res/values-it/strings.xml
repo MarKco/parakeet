@@ -39,4 +39,14 @@
         - Aggiunta questa finestra che spiega cosa c\'è di nuovo :-)\n
     </string>
     
+		<!-- Help overlay -->
+	<string name="help_finished">Il breve tour dell\'app è concluso, ora divertiti a usarla!</string>
+	<string name="time_to_leave_help_1">A che ora devi uscire?</string>
+	<string name="time_to_leave_help_2">Qui puoi impostare l\'ora di uscita</string>
+	<string name="new_thing_help_1">Aggiungi una cosa da fare</string>
+	<string name="new_thing_help_2">Se devi aggiungere un\'ulteriore impegno mattutino puoi farlo qui</string>
+	<string name="set_alarm_help_1">Imposta la sveglia</string>
+	<string name="set_alarm_help_2">Quando hai finito di selezionare le attività premi il pulsante con la sveglia</string>
+	<string name="next_help">Next</string>
+	
 </resources>
