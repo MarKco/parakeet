@@ -2,19 +2,15 @@ package com.ilsecondodasinistra.parakeet;
 
 import settings.ParakeetSettingsActivity;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.support.v4.app.ActionBarDrawerToggle;
-import android.support.v4.app.Fragment;
 import android.support.v4.widget.DrawerLayout;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.SlidingDrawer.OnDrawerOpenListener;
-import android.widget.Toast;
 
 import com.actionbarsherlock.app.ActionBar;
+import com.espian.showcaseview.ShowcaseView;
 
 public class DrawerLayoutHelper {
 
@@ -138,6 +134,9 @@ public class DrawerLayoutHelper {
 		case 3:
 			Intent aboutIntent = new Intent(this.activity, AboutActivity.class);
 			this.activity.startActivity(aboutIntent);
+			break;
+		case 4:
+			this.activity.showHelpIfNeeded(ShowcaseView.TYPE_NO_LIMIT);
 			break;
 		default:
 			break;

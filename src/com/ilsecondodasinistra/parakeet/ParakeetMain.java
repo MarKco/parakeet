@@ -201,63 +201,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 			}
 		});
 		
-		/*
-		 * Toggles handler for application drawer
-		 */
-        drawerLayoutHelper = new DrawerLayoutHelper(ParakeetMain.this, actionBar);
-		
-        ShowcaseViews views = new ShowcaseViews(this, new ShowcaseViews.OnShowcaseAcknowledged() {
-            @Override
-            public void onShowCaseAcknowledged(ShowcaseView showcaseView) {
-                /*
-                 * If application drawer was never opened manually,
-                 * automatically open it at first application run
-                 */
-        		final SharedPreferences settings = getPreferences(0);
-        		if (settings.getBoolean("drawerFirstOpening", true))
-        		{
-        			drawerLayoutHelper.toggle();
-        			
-        			SharedPreferences.Editor editor = settings.edit();
-        			editor.putBoolean("drawerFirstOpening", false);
-        			editor.commit();
-        		}
-            }
-        });
-
-        mOptions.block = false;
-        
-		ShowcaseView.ConfigOptions options = new ShowcaseView.ConfigOptions();
-//		options.shotType = ShowcaseView.TYPE_NO_LIMIT;
-		options.shotType = ShowcaseView.TYPE_ONE_SHOT;
-		options.showcaseId = 1234;
-		
-		views.addView(new ItemViewProperties(R.id.time_to_leave_label, 
-				R.string.time_to_leave_help_1, 
-				R.string.time_to_leave_help_2, 
-				options));
-		
-		ShowcaseView.ConfigOptions showcaseConfigOptions = new ShowcaseView.ConfigOptions();
-        showcaseConfigOptions.block = true;
-        showcaseConfigOptions.shotType = ShowcaseView.TYPE_ONE_SHOT;
-        showcaseConfigOptions.fadeInDuration = 200;
-        showcaseConfigOptions.fadeOutDuration = 200;
-		showcaseConfigOptions.hideOnClickOutside = false;
-
-		views.addView(new ItemViewProperties(R.id.new_thing, 
-				R.string.new_thing_help_1, 
-				R.string.new_thing_help_2, 
-				showcaseConfigOptions));
-
-		views.addView(new ItemViewProperties(R.id.set_alarm, 
-				R.string.set_alarm_help_1, 
-				R.string.set_alarm_help_2, 
-				showcaseConfigOptions));
-
-		views.show();
-//        ViewTarget target = new ViewTarget(R.id.set_alarm, this);
-//        showcaseView = ShowcaseView.insertShowcaseView(target, this, R.string.string_1, R.string.string_2, showcaseConfigOptions);
-
+		showHelpIfNeeded(ShowcaseView.TYPE_ONE_SHOT);
 	}
 
 	TimePickerDialog.OnTimeSetListener timePickerListener = new TimePickerDialog.OnTimeSetListener() {
@@ -293,7 +237,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 
 			config.setDateTimeToLeave(config.getDateTime().getTime());
 			
-			Toast.makeText(ParakeetMain.this, "Ora di uscire: " + config.getDateFormattedDate(config.getDateTimeToLeave(), FORMAT_TYPE_DATE_COMPLETE), 2000).show();
+//			Toast.makeText(ParakeetMain.this, "Ora di uscire: " + config.getDateFormattedDate(config.getDateTimeToLeave(), FORMAT_TYPE_DATE_COMPLETE), 2000).show();
 			
 //			try {
 //				/*
@@ -569,5 +513,73 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 
 	    mAlarm.cancel(pi);
 	    pi.cancel();
+    }
+    
+    void showHelpIfNeeded(int type) {
+		/*
+		 * Toggles handler for application drawer
+		 */
+        drawerLayoutHelper = new DrawerLayoutHelper(ParakeetMain.this, actionBar);
+		
+        ShowcaseViews views = new ShowcaseViews(this, new ShowcaseViews.OnShowcaseAcknowledged() {
+            @Override
+            public void onShowCaseAcknowledged(ShowcaseView showcaseView) {
+                /*
+                 * If application drawer was never opened manually,
+                 * automatically open it at first application run
+                 */
+        		final SharedPreferences settings = getPreferences(0);
+        		if (settings.getBoolean("drawerFirstOpening", true))
+        		{
+        			drawerLayoutHelper.toggle();
+        			
+        			SharedPreferences.Editor editor = settings.edit();
+        			editor.putBoolean("drawerFirstOpening", false);
+        			editor.commit();
+        		}
+            }
+        });
+
+        mOptions.block = false;
+        
+		ShowcaseView.ConfigOptions options = new ShowcaseView.ConfigOptions();
+//		options.shotType = ShowcaseView.TYPE_NO_LIMIT;
+		options.shotType = type;
+		options.showcaseId = 1234;
+		
+		views.addView(new ItemViewProperties(R.id.time_to_leave_label, 
+				R.string.time_to_leave_help_1, 
+				R.string.time_to_leave_help_2, 
+				options));
+		
+		ShowcaseView.ConfigOptions showcaseConfigOptions = new ShowcaseView.ConfigOptions();
+        showcaseConfigOptions.block = true;
+        showcaseConfigOptions.shotType = type;
+        showcaseConfigOptions.fadeInDuration = 200;
+        showcaseConfigOptions.fadeOutDuration = 200;
+		showcaseConfigOptions.hideOnClickOutside = false;
+		showcaseConfigOptions.showcaseId = 1235;
+
+		views.addView(new ItemViewProperties(R.id.new_thing, 
+				R.string.new_thing_help_1, 
+				R.string.new_thing_help_2, 
+				showcaseConfigOptions));
+
+		ShowcaseView.ConfigOptions showcaseConfigOptions2 = new ShowcaseView.ConfigOptions();
+        showcaseConfigOptions2.block = true;
+        showcaseConfigOptions2.shotType = type;
+        showcaseConfigOptions2.fadeInDuration = 200;
+        showcaseConfigOptions2.fadeOutDuration = 200;
+		showcaseConfigOptions2.hideOnClickOutside = false;
+		showcaseConfigOptions2.showcaseId = 1236;
+		
+		views.addView(new ItemViewProperties(R.id.set_alarm, 
+				R.string.set_alarm_help_1, 
+				R.string.set_alarm_help_2, 
+				showcaseConfigOptions2));
+
+		views.show();
+//        ViewTarget target = new ViewTarget(R.id.set_alarm, this);
+//        showcaseView = ShowcaseView.insertShowcaseView(target, this, R.string.string_1, R.string.string_2, showcaseConfigOptions);
     }
 }

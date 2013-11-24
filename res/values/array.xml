@@ -6,6 +6,7 @@
        <item>@string/set_time_to_leave</item>
 	   <item>@string/action_settings</item>
        <item>@string/action_about</item>
+       <item>@string/action_help</item>
        <item></item>
    </array> 
     

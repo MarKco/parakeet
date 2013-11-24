@@ -126,7 +126,22 @@
         </LinearLayout>
 
         <!-- DRAWER LAYOUT - MENU -->
+
         <include layout="@layout/drawer_layout" />
     </android.support.v4.widget.DrawerLayout>
+
+    <LinearLayout
+        android:visibility="gone"
+        android:id="@+id/undobar"
+        style="@style/UndoBar" >
+
+        <TextView
+            android:id="@+id/undobar_message"
+            style="@style/UndoBarMessage" />
+
+        <Button
+            android:id="@+id/undobar_button"
+            style="@style/UndoBarButton" />
+    </LinearLayout>
 
 </RelativeLayout>
