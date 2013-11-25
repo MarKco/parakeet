@@ -4,6 +4,7 @@
    <array name="drawer_items">
        <item>@string/button_set_alarm</item>
        <item>@string/set_time_to_leave</item>
+       <item>@string/delete_notification_custom_text</item>
 	   <item>@string/action_settings</item>
        <item>@string/action_about</item>
        <item>@string/action_help</item>

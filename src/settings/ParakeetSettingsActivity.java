@@ -68,6 +68,7 @@ public class ParakeetSettingsActivity extends SherlockPreferenceActivity {
 
 		// Add 'general' preferences.
 		addPreferencesFromResource(R.xml.pref_general);
+		bindPreferenceSummaryToValue(findPreference("exit_noti_text"));
 
 		// Add 'notifications' preferences, and a corresponding header.
 //		PreferenceCategory fakeHeader = new PreferenceCategory(this);
@@ -257,6 +258,7 @@ public class ParakeetSettingsActivity extends SherlockPreferenceActivity {
 			// updated to reflect the new value, per the Android Design
 			// guidelines.
 			bindPreferenceSummaryToValue(findPreference("sync_frequency"));
+			bindPreferenceSummaryToValue(findPreference("exit_noti_text"));
 		}
 	}
 	

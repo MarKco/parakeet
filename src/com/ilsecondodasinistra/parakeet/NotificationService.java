@@ -8,9 +8,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 public class NotificationService extends Service {
@@ -34,11 +36,18 @@ public class NotificationService extends Service {
 //	        Toast.makeText(context, "Siamo nel caso Android 4.0", 1000).show();
 	        PendingIntent pi = PendingIntent.getActivity(context, 0, new Intent(context, ParakeetMain.class), 0); // open MainActivity if the user selects this notification
 	        
-	        String longText = (String)getText(R.string.notification_time_to_leave_text);
+			String notificationText;		
+			SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+			notificationText = preferences.getString("exit_noti_text", "");
+			
+			if (notificationText.equals(""))
+			{
+				notificationText = context.getString(R.string.notification_time_to_leave_text);
+			}
 	        
 	        Builder builder = new Notification.Builder(this);
 	        builder.setContentTitle(context.getString(R.string.notification_time_to_leave_title))
-	        		.setContentText(context.getString(R.string.notification_time_to_leave_text))
+	        		.setContentText(notificationText)
 	        		.setSmallIcon(R.drawable.ic_launcher)
 	        		.setContentIntent(pi)
 	        		.build();

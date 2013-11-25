@@ -26,12 +26,15 @@
     <!-- Time-to-leave Notification -->
     <string name="notification_time_to_leave_text">E\'ora di andare! Metti giù le parole crociate, esci dal bagno e corri!</string>
     <string name="notification_time_to_leave_title">Ora di uscire!</string>
+   	<string name="exit_noti_caption">Testo della notifica all\'uscita</string>
+    <string name="reset_noti_toast">Testo della notifica riportato al default</string>
     
     <!-- Application Drawer -->
     <string name="title_activity_settings">Menu</string>
     <string name="drawer_open">Menu</string>
     <string name="drawer_close">Parakeet</string>
 	<string name="notification_on_leaving">Notifica quando è ora di uscire</string>
+    <string name="delete_notification_custom_text">Reset testo notifica all\'uscita</string>
 	
 	<string name="whatsnew">
         - Aggiunto il menu a sinistra\n

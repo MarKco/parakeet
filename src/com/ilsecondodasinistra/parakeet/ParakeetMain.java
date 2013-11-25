@@ -479,6 +479,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 		 * #TODO: Add optionality of notification
 		 */
 		boolean shouldThisBeNotified = prefs.getBoolean("notification_on_exit", true);
+		
 		Date moment = new Date(config.getDateTimeToLeaveTimestamp());
 		if(shouldThisBeNotified)
 //		if(config.getDateTimeToLeaveTimestamp() > now.getTime())

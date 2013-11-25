@@ -1,13 +1,17 @@
 package com.ilsecondodasinistra.parakeet;
 
 import settings.ParakeetSettingsActivity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.widget.DrawerLayout;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.espian.showcaseview.ShowcaseView;
@@ -126,16 +130,24 @@ public class DrawerLayoutHelper {
 			this.activity.chooseTime();
 			break;
 		case 2:
-			//Toggle notification on leaving
+			//Reset notification on exit custom text
+		    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.activity);
+		    SharedPreferences.Editor editor = prefs.edit();
+		    editor.putString("exit_noti_text", "");
+		    editor.commit();
+		    Toast.makeText(this.activity, this.activity.getString(R.string.reset_noti_toast), 1000).show();
+			break;
+		case 3:
+			//Start Settings Activity
 			Intent i = new Intent(this.activity, ParakeetSettingsActivity.class);
 			this.activity.startActivity(i);
 //			this.activity.sendMail();
 			break;
-		case 3:
+		case 4:
 			Intent aboutIntent = new Intent(this.activity, AboutActivity.class);
 			this.activity.startActivity(aboutIntent);
 			break;
-		case 4:
+		case 5:
 			this.activity.showHelpIfNeeded(ShowcaseView.TYPE_NO_LIMIT);
 			break;
 		default:
