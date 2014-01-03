@@ -55,5 +55,8 @@
     <string name="action">Perform action</string>
     <string name="undobar_sample_message">Action performed.</string>
     <string name="undo">Undo</string>
+    
+    <!-- ACRA -->
+    <string name="ACRACrash">ACRA error</string>
 
 </resources>
