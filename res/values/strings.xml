@@ -8,8 +8,8 @@
     <string name="add_row_name_caption">Activity</string>
     <string name="add_row_duration_caption">Duration (min.)</string>
     <string name="add_activity_title">Add new thing-to-do</string>
-    <string name="modify_activity_title">Modify thing-to-do</string>
-    <string name="delete_activity_title">Delete thing-to-do</string>
+    <string name="modify_activity_title">Modify</string>
+    <string name="delete_activity_title">Delete</string>
     <string name="delete_activity_text">Really want to remove this entry?</string>
     <string name="delete_button_text">Remove</string>
     <string name="dialog_cancel">Cancel</string>

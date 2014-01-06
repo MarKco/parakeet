@@ -7,8 +7,8 @@
     <string name="add_row_name_caption">Attività</string>
     <string name="add_row_duration_caption">Durata (min.)</string>
     <string name="add_activity_title">Aggiungi nuovo elemento</string>
-    <string name="modify_activity_title">Modifica un elemento della lista</string>
-    <string name="delete_activity_title">Cancella elemento</string>
+    <string name="modify_activity_title">Modifica</string>
+    <string name="delete_activity_title">Cancella</string>
     <string name="delete_activity_text">Rimuovere questa voce della lista?</string>
     <string name="delete_button_text">Rimuovi</string>
     <string name="dialog_cancel">Annulla</string>

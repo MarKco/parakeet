@@ -2,6 +2,7 @@ package com.ilsecondodasinistra.parakeet;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
@@ -32,7 +33,6 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TimePicker;
-import android.widget.Toast;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockActivity;
@@ -41,7 +41,6 @@ import com.actionbarsherlock.view.Window;
 import com.espian.showcaseview.ShowcaseView;
 import com.espian.showcaseview.ShowcaseViews;
 import com.espian.showcaseview.ShowcaseViews.ItemViewProperties;
-import com.espian.showcaseview.targets.ViewTarget;
 import com.google.analytics.tracking.android.EasyTracker;
 import com.ilsecondodasinistra.parakeet.CustomAdapter.ThingToDoCallback;
 
@@ -476,7 +475,6 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 		/*
 		 * Sets notification when it's time to leave
 		 * Just in case you got stuck reading at the toilet
-		 * #TODO: Add optionality of notification
 		 */
 		boolean shouldThisBeNotified = prefs.getBoolean("notification_on_exit", true);
 		
@@ -487,6 +485,24 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 			Intent notiIntent = new Intent(getBaseContext(), com.ilsecondodasinistra.parakeet.NotificationService.class);
 			PendingIntent pi = PendingIntent.getService(getBaseContext(), 0, notiIntent, 0);
 			AlarmManager mAlarm = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
+			
+			Date now = new Date();
+			/* Bugfix: If the date in config is in the past, change it to tomorrow.
+			 * Not good code, I hope once I switch to Joda Time this will be better */
+			if (config.getDateTimeToLeave().getTime() < now.getTime()) {
+				//Instantiate calendars for the LeavingDate and today's date
+				Calendar c = Calendar.getInstance();
+				Calendar nowCal = Calendar.getInstance();
+				nowCal.setTime(now);
+				c.setTime(config.getDateTimeToLeave());
+				
+				//Sets today's date on LeavingDate and adds 1
+				c.set(Calendar.DAY_OF_YEAR, nowCal.get(Calendar.DAY_OF_YEAR)+1);
+				c.set(Calendar.YEAR, nowCal.get(Calendar.YEAR));
+				
+				//Saves obtained date
+				config.setDateTimeToLeave(c.getTime());
+			}
 			
 			mAlarm.set(AlarmManager.RTC_WAKEUP, config.getDateTimeToLeaveTimestamp(), pi);
 		}
