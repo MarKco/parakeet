@@ -46,8 +46,6 @@ public class CustomAdapter extends ArrayAdapter<ThingToDo> {
 					.findViewById(R.id.todo_length);
 			viewHolder.todoChecked = (CheckBox) convertView
 					.findViewById(R.id.todo_todo);
-			viewHolder.deleteRow = (ImageButton) convertView
-					.findViewById(R.id.deleteRow);
 
 			convertView.setTag(viewHolder);
 		} else {
@@ -70,8 +68,6 @@ public class CustomAdapter extends ArrayAdapter<ThingToDo> {
 
 		final ThingToDo toDoItem = getItem(position);
 		
-		viewHolder.deleteRow.setTag(toDoItem);
-
 		viewHolder.todoName.setText(toDoItem.getName());
 		viewHolder.todoLength.setText(toDoItem.getStringLength());
 
@@ -102,39 +98,6 @@ public class CustomAdapter extends ArrayAdapter<ThingToDo> {
 		
 		viewHolder.todoChecked.setChecked(toDoItem.getChecked());
 		
-		viewHolder.deleteRow.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-
-				final ThingToDo index = (ThingToDo) v.getTag();
-				
-				AlertDialog deleteElementDialog = new AlertDialog.Builder(getContext())
-				.setTitle(R.string.delete_activity_title)
-				.setMessage(R.string.delete_activity_text)
-				.setIcon(android.R.drawable.ic_delete)
-				.setPositiveButton(R.string.delete_button_text, new DialogInterface.OnClickListener() {
-					
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						remove(index);
-						dialog.dismiss();
-					}
-				})
-				.setNegativeButton(R.string.dialog_cancel, new DialogInterface.OnClickListener() {
-					
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				})
-				.show();
-		        				
-				//Codice per rimuovere la riga
-				notifyDataSetChanged();
-			}
-		});
-
 		return convertView;
 	}
 
@@ -152,7 +115,6 @@ public class CustomAdapter extends ArrayAdapter<ThingToDo> {
 		public TextView todoName;
 		public TextView todoLength;
 		public CheckBox todoChecked;
-		public ImageButton deleteRow;
 	}
 
 }

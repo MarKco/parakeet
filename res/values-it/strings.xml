@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="app_name">Parakeet</string>
     <string name="action_settings">Impostazioni</string>
     <string name="to_do">Da fare</string>
@@ -22,35 +23,36 @@
     <string name="app_changelog">Versione 1.3\n\nIl progetto grafico del logo è di <a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
     <string name="changelog_title">Changelog</string>
     <string name="action_about">Info su Parakeet</string>
-    
+
     <!-- Time-to-leave Notification -->
     <string name="notification_time_to_leave_text">E\'ora di andare! Metti giù le parole crociate, esci dal bagno e corri!</string>
     <string name="notification_time_to_leave_title">Ora di uscire!</string>
-   	<string name="exit_noti_caption">Testo della notifica all\'uscita</string>
+    <string name="exit_noti_caption">Testo della notifica all\'uscita</string>
     <string name="reset_noti_toast">Testo della notifica riportato al default</string>
-    
+
     <!-- Application Drawer -->
     <string name="title_activity_settings">Menu</string>
     <string name="drawer_open">Menu</string>
     <string name="drawer_close">Parakeet</string>
-	<string name="notification_on_leaving">Notifica quando è ora di uscire</string>
+    <string name="notification_on_leaving">Notifica quando è ora di uscire</string>
     <string name="delete_notification_custom_text">Reset testo notifica all\'uscita</string>
-	
-	<string name="whatsnew">
-        - Aggiunto il menu a sinistra\n
-        - Aggiunta una notifica quando è ora di uscire. Tale notifica può essere disabilitata nelle impostazioni\n 
-        - Aggiunta questa finestra che spiega cosa c\'è di nuovo :-)\n
-    </string>
-    
-		<!-- Help overlay -->
-	<string name="help_finished">Il breve tour dell\'app è concluso, ora divertiti a usarla!</string>
-	<string name="time_to_leave_help_1">A che ora devi uscire?</string>
-	<string name="time_to_leave_help_2">Qui puoi impostare l\'ora di uscita</string>
-	<string name="new_thing_help_1">Aggiungi una cosa da fare</string>
-	<string name="new_thing_help_2">Se devi aggiungere un\'ulteriore impegno mattutino puoi farlo qui</string>
-	<string name="set_alarm_help_1">Imposta la sveglia</string>
-	<string name="set_alarm_help_2">Quando hai finito di selezionare le attività premi il pulsante con la sveglia</string>
-	<string name="next_help">Next</string>
-	<string name="action_help">Guida</string>
-	
+    <string name="whatsnew">        - Sistemato un baco nella notifica in uscita\n
+        - Ora gli elementi della lista possono essere cancellati con lo swipe e può esserne annullata la cancellazione</string>
+
+    <!-- Help overlay -->
+    <string name="help_finished">Il breve tour dell\'app è concluso, ora divertiti a usarla!</string>
+    <string name="time_to_leave_help_1">A che ora devi uscire?</string>
+    <string name="time_to_leave_help_2">Qui puoi impostare l\'ora di uscita</string>
+    <string name="new_thing_help_1">Aggiungi una cosa da fare</string>
+    <string name="new_thing_help_2">Se devi aggiungere un\'ulteriore impegno mattutino puoi farlo qui</string>
+    <string name="handle_todo_help_1">Modificala!</string>
+    <string name="handle_todo_help_2">Tocca per cambiare titolo o durata, scorri per cancellare una riga</string>
+    <string name="set_alarm_help_1">Imposta la sveglia</string>
+    <string name="set_alarm_help_2">Quando hai finito di selezionare le attività premi il pulsante con la sveglia</string>
+    <string name="next_help">Next</string>
+    <string name="action_help">Guida</string>
+
+    <!-- EnhancedListView notifications -->
+    <string name="after_remove">Cancellato</string>
+
 </resources>

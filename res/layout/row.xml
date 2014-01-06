@@ -4,7 +4,8 @@
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:gravity="center_horizontal|center_vertical"
-    android:padding="0dip"
+    android:paddingTop="7dip"
+    android:paddingBottom="7dip"
     android:layout_margin="0dip"
     android:descendantFocusability="blocksDescendants"
     android:weightSum="11" >
@@ -36,15 +37,4 @@
         android:gravity="center_horizontal|center_vertical"
         android:layout_weight="2"/>
     
-    <ImageButton
-        android:id="@+id/deleteRow"
-        android:layout_weight="0.3"
-        android:padding="2dip"
-        android:src="@drawable/ic_delete_property"
-        android:background="@android:color/transparent"
-        android:gravity="center_horizontal|center_vertical"
-        android:layout_gravity="center_horizontal|center_vertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
 </LinearLayout>

@@ -2,7 +2,6 @@ package com.ilsecondodasinistra.parakeet;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
@@ -30,7 +29,6 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
@@ -43,6 +41,8 @@ import com.espian.showcaseview.ShowcaseViews;
 import com.espian.showcaseview.ShowcaseViews.ItemViewProperties;
 import com.google.analytics.tracking.android.EasyTracker;
 import com.ilsecondodasinistra.parakeet.CustomAdapter.ThingToDoCallback;
+import com.ilsecondodasinistra.parakeet.EnhancedListView.OnDismissCallback;
+import com.ilsecondodasinistra.parakeet.EnhancedListView.Undoable;
 
 public class ParakeetMain extends SherlockActivity implements ThingToDoCallback, OnClickListener {
 
@@ -58,7 +58,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 	TextView timeToLeave;
 	TextView timeToLeaveLabel;
 	List<ThingToDo> listOfThingsToDo;
-	ListView listOfToDo;
+	EnhancedListView listOfToDo;
 	
 	CustomAdapter listCustomAdapter;
 	
@@ -127,8 +127,7 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 		 */
 	    deleteAllNotifications();
 
-		listOfToDo = (ListView) findViewById(R.id.todoList);
-		
+		listOfToDo = (EnhancedListView) findViewById(R.id.todoList);
 		if(listOfThingsToDo == null)
 		{
 			listOfThingsToDo = config.getNewListOfThingsToDo();
@@ -142,6 +141,29 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 				listOfThingsToDo);
 		listCustomAdapter.setCallback(this);
 		listOfToDo.setAdapter(listCustomAdapter);
+
+		listOfToDo.setDismissCallback(new OnDismissCallback() {
+			
+			@Override
+			public Undoable onDismiss(EnhancedListView listView, final int position) {
+				final ThingToDo thing = (ThingToDo) listCustomAdapter.getItem(position);
+				listCustomAdapter.remove(thing);
+				return new EnhancedListView.Undoable() {
+					
+					@Override
+					public void undo() {
+						// TODO Auto-generated method stub
+						listCustomAdapter.insert(thing, position);
+					}
+				
+			    // Return a string for your item
+			    @Override public String getTitle() {
+			      return getString(R.string.after_remove) + " " + thing.getName();
+			    }		    
+				};
+			}
+		});
+		listOfToDo.enableSwipeToDismiss();
 		
 		calculateWakeUpTime();
 
@@ -582,6 +604,19 @@ public class ParakeetMain extends SherlockActivity implements ThingToDoCallback,
 				R.string.new_thing_help_2, 
 				showcaseConfigOptions));
 
+		ShowcaseView.ConfigOptions showcaseConfigOptions3 = new ShowcaseView.ConfigOptions();
+        showcaseConfigOptions3.block = true;
+        showcaseConfigOptions3.shotType = type;
+        showcaseConfigOptions3.fadeInDuration = 200;
+        showcaseConfigOptions3.fadeOutDuration = 200;
+		showcaseConfigOptions3.hideOnClickOutside = false;
+		showcaseConfigOptions3.showcaseId = 1237;
+		
+		views.addView(new ItemViewProperties(R.id.todoList, 
+				R.string.handle_todo_help_1, 
+				R.string.handle_todo_help_2, 
+				showcaseConfigOptions3));
+		
 		ShowcaseView.ConfigOptions showcaseConfigOptions2 = new ShowcaseView.ConfigOptions();
         showcaseConfigOptions2.block = true;
         showcaseConfigOptions2.shotType = type;
