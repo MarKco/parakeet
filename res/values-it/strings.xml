@@ -20,7 +20,7 @@
     <string name="app_author"><a href="http://www.marcozanetti.it">Marco Zanetti</a></string>
     <string name="author_email">Contattami: <a href="mailto:ilsecondodasinistra@gmail.com">ilsecondodasinistra@gmail.com</a></string>
     <string name="app_info">A che ora devi alzarti domani?\n\nSembra una domanda facile, ma non lo è. Dipende tutto da quello che devi fare prima di uscire: magari pensi che domattina ti farai una doccia, o forse l\'hai già fatta stasera. Forse farai colazione, o forse no. Magari sai che dovrai portare fuori il cane, o fare il saluto al sole.\n\nScegliere il momento giusto per alzarsi non è facile perché, in realtà, quello che sai è soltanto a che ora dovrai essere fuori di casa. Ecco dove ti viene in aiuto Parakeet! Ti basta impostare l\'orario di uscita da casa e poi selezionare dalla lista le azioni che domani dovrai fare. Parakeet calcolerà per te il tempo necessario ed imposterà la sveglia per te.\n\nChiaramente ognuno di noi è diverso, così la lista delle azioni in Parakeet è completamente personalizzabile ed estendibile. Insomma, hai tutto quello che ti serve per svegliarti presto, ma non un minuto prima!\n\nProva Parakeet oggi, ti sveglierai più felice domani.</string>
-    <string name="app_changelog">Versione 1.3\n\nIl progetto grafico del logo è di <a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
+    <string name="app_changelog">Versione 1.5\n\nIl progetto grafico del logo è di <a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
     <string name="changelog_title">Changelog</string>
     <string name="action_about">Info su Parakeet</string>
 
@@ -37,14 +37,15 @@
     <string name="notification_on_leaving">Notifica quando è ora di uscire</string>
     <string name="delete_notification_custom_text">Reset testo notifica all\'uscita</string>
     <string name="whatsnew">        - Sistemato un baco nella notifica in uscita\n
-        - Ora gli elementi della lista possono essere cancellati con lo swipe e può esserne annullata la cancellazione</string>
+        - Ora gli elementi della lista possono essere cancellati con lo swipe e può esserne annullata la cancellazione\n\n
+        - Parakeet è stato installato da più di 1000 persone in tutto il mondo, tra cui te. Grazie per essere coloro che usano l\'app e la diffondono regalando risvegli meno frenetici!</string>
 
     <!-- Help overlay -->
     <string name="help_finished">Il breve tour dell\'app è concluso, ora divertiti a usarla!</string>
     <string name="time_to_leave_help_1">A che ora devi uscire?</string>
     <string name="time_to_leave_help_2">Qui puoi impostare l\'ora di uscita</string>
     <string name="new_thing_help_1">Aggiungi una cosa da fare</string>
-    <string name="new_thing_help_2">Se devi aggiungere un\'ulteriore impegno mattutino puoi farlo qui</string>
+    <string name="new_thing_help_2">Se devi aggiungere un ulteriore impegno mattutino puoi farlo qui</string>
     <string name="handle_todo_help_1">Modificala!</string>
     <string name="handle_todo_help_2">Tocca per cambiare titolo o durata, scorri per cancellare una riga</string>
     <string name="set_alarm_help_1">Imposta la sveglia</string>
