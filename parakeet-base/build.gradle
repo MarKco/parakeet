@@ -9,8 +9,9 @@ android {
 //        applicationId "com.ilsecondodasinistra.parakeet"
         minSdkVersion 16
         targetSdkVersion 27
-        versionCode 11
-        versionName "1.7"
+        versionCode 20
+        versionName "2.6"
+//        multiDexEnabled true
     }
     buildTypes {
         release {

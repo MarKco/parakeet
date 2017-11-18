@@ -552,8 +552,10 @@ public class ParakeetMain extends AppCompatActivity implements ThingToDoCallback
 		PendingIntent pi = PendingIntent.getService(getBaseContext(), 0, i, 0);
 		AlarmManager mAlarm = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
 
-	    mAlarm.cancel(pi);
-	    pi.cancel();
+		if(pi != null) {
+			mAlarm.cancel(pi);
+			pi.cancel();
+		}
     }
     
 //    void showHelpIfNeeded(int type) {

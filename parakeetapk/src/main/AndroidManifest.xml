@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.marco.parakeet">
+    package="com.example.marco.parakeet"
+    android:targetSandboxVersion="2">
 
 </manifest>
