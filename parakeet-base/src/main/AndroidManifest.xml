@@ -6,34 +6,52 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar" android:name="MyApplication">
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:name="MyApplication">
         <activity
             android:name="com.ilsecondodasinistra.parakeet.ParakeetMain"
             android:label="@string/app_name"
-            android:theme="@style/AppTheme" >
+            android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="parakeet-instantapp.000webhostapp.com"
+                    android:pathPattern="/open" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="http"
+                    android:host="parakeet-instantapp.000webhostapp.com" />
+            </intent-filter>
         </activity>
         <activity
             android:name="com.ilsecondodasinistra.parakeet.AboutActivity"
             android:label="@string/action_about"
-            android:theme="@style/AppTheme" >
-        </activity>
+            android:theme="@style/AppTheme"></activity>
 
-        <service android:name="com.ilsecondodasinistra.parakeet.NotificationService" >
-        </service>
+        <service android:name="com.ilsecondodasinistra.parakeet.NotificationService"></service>
 
-        <receiver android:name="com.ilsecondodasinistra.parakeet.OnAlarmReceiver" >
-        </receiver>
+        <receiver android:name="com.ilsecondodasinistra.parakeet.OnAlarmReceiver"></receiver>
 
         <activity
             android:name="settings.ParakeetSettingsActivity"
             android:label="@string/title_activity_parakeet_settings"
-            android:theme="@style/AppTheme">
-        </activity>
+            android:theme="@style/AppTheme"></activity>
     </application>
 
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
