@@ -1,0 +1,120 @@
+<resources>
+
+    <!--Base application theme, dependent on API level. This theme is replaced
+        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.-->
+    <style name="AppBaseTheme" parent="Theme.Parakeet_light">
+
+        <!--Theme customizations available in newer API levels can go in
+            res/values-vXX/styles.xml, while customizations related to
+            backward-compatibility can go here. -->
+        <item name="showcaseViewStyle">@style/CustomShowcaseTheme</item>
+    </style>
+
+    <!-- Application theme. -->
+    <style name="AppTheme" parent="AppBaseTheme">
+        <item name="showcaseViewStyle">@style/CustomShowcaseTheme</item>
+    </style>
+
+    <style name="CustomShowcaseTheme" parent="ShowcaseView.Light">
+        <item name="sv_backgroundColor">#EE002200</item>
+        <item name="sv_showcaseColor">#FFFFFF</item>
+        <item name="sv_buttonText">@string/next_help</item>
+        <item name="sv_titleTextAppearance">@style/CustomTitle</item>
+    </style>
+
+    <style name="CustomTitle" parent="TextAppearance.ShowcaseView.Title">
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="UndoBar">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_gravity">bottom</item>
+        <item name="android:layout_marginLeft">8dp</item>
+        <item name="android:layout_marginRight">8dp</item>
+        <item name="android:layout_marginBottom">16dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:background">@drawable/undobar</item>
+        <item name="android:clickable">true</item>
+        <item name="android:divider">@drawable/undobar_divider</item>
+    </style>
+
+    <style name="UndoBarMessage">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginLeft">16dp</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:layout_marginRight">16dp</item>
+        <item name="android:textAppearance">?android:textAppearanceMedium</item>
+        <item name="android:textColor">#fff</item>
+
+    </style>
+
+    <style name="UndoBarButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:paddingLeft">16dp</item>
+        <item name="android:paddingRight">16dp</item>
+        <item name="android:background">@drawable/undobar_button</item>
+        <item name="android:drawableLeft">@drawable/ic_undobar_undo</item>
+        <item name="android:drawablePadding">12dp</item>
+        <item name="android:textAppearance">?android:textAppearanceSmall</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#fff</item>
+        <item name="android:text">@string/undo</item>
+    </style>
+
+    <style name="Theme.Parakeet_light" parent="@style/Theme.AppCompat.Light">
+        <item name="android:actionBarItemBackground">@drawable/selectable_background_parakeet_light</item>
+        <item name="android:popupMenuStyle">@style/PopupMenu.Parakeet_light</item>
+        <item name="android:dropDownListViewStyle">@style/DropDownListView.Parakeet_light</item>
+        <item name="android:actionBarTabStyle">@style/ActionBarTabStyle.Parakeet_light</item>
+        <item name="android:actionDropDownStyle">@style/DropDownNav.Parakeet_light</item>
+        <item name="android:actionBarStyle">@style/ActionBar.Solid.Parakeet_light</item>
+        <item name="android:actionModeBackground">@drawable/cab_background_top_parakeet_light</item>
+        <item name="android:actionModeSplitBackground">@drawable/cab_background_bottom_parakeet_light</item>
+        <item name="android:actionModeCloseButtonStyle">@style/ActionButton.CloseMode.Parakeet_light</item>
+
+
+    </style>
+
+    <style name="ActionBar.Solid.Parakeet_light" parent="@style/Widget.AppCompat.Light.ActionBar.Solid">
+        <item name="android:background">@drawable/ab_solid_parakeet_light</item>
+        <item name="android:backgroundStacked">@drawable/ab_stacked_solid_parakeet_light</item>
+        <item name="android:backgroundSplit">@drawable/ab_bottom_solid_parakeet_light</item>
+    </style>
+
+    <style name="ActionBar.Transparent.Parakeet_light" parent="@style/Widget.AppCompat.Light.ActionBar">
+        <item name="android:background">@drawable/ab_transparent_parakeet_light</item>
+    </style>
+
+    <!-- this style is only referenced in a Light.DarkActionBar based theme -->
+    <style name="Theme.Parakeet_light.Widget" parent="@style/Theme.AppCompat">
+        <item name="android:popupMenuStyle">@style/PopupMenu.Parakeet_light</item>
+        <item name="android:dropDownListViewStyle">@style/DropDownListView.Parakeet_light</item>
+    </style>
+
+    <style name="PopupMenu.Parakeet_light" parent="@style/Widget.AppCompat.Light.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/menu_dropdown_panel_parakeet_light</item>
+    </style>
+
+    <style name="DropDownListView.Parakeet_light" parent="@style/Widget.AppCompat.Light.ListView.DropDown">
+        <item name="android:listSelector">@drawable/selectable_background_parakeet_light</item>
+    </style>
+
+    <style name="ActionBarTabStyle.Parakeet_light" parent="@style/Widget.AppCompat.Light.ActionBar.TabView">
+        <item name="android:background">@drawable/tab_indicator_ab_parakeet_light</item>
+    </style>
+
+    <style name="DropDownNav.Parakeet_light" parent="@style/Widget.AppCompat.Light.Spinner.DropDown.ActionBar">
+        <item name="android:background">@drawable/spinner_background_ab_parakeet_light</item>
+        <item name="android:popupBackground">@drawable/menu_dropdown_panel_parakeet_light</item>
+        <item name="android:dropDownSelector">@drawable/selectable_background_parakeet_light</item>
+    </style>
+
+    <style name="ActionButton.CloseMode.Parakeet_light" parent="@style/Widget.AppCompat.Light.ActionButton.CloseMode">
+        <item name="android:background">@drawable/btn_cab_done_parakeet_light</item>
+    </style>
+
+</resources>
