@@ -387,12 +387,15 @@ public class ParakeetMain extends AppCompatActivity implements ThingToDoCallback
             drawerLayoutHelper.toggle();
             return true;
         }
-		
-		switch (item.getItemId()) {
-		case(R.id.action_about):
+
+		int i = item.getItemId();
+		if (i == R.id.action_about) {
 			Intent aboutIntent = new Intent(ParakeetMain.this, AboutActivity.class);
 			startActivity(aboutIntent);
-		default:
+
+			drawerLayoutHelper.toggle();
+			return false;
+		} else {
 			drawerLayoutHelper.toggle();
 			return false;
 		}
@@ -426,40 +429,40 @@ public class ParakeetMain extends AppCompatActivity implements ThingToDoCallback
     	
     	String name;
     	String length;
-    	
-        switch (v.getId()) {
-        case R.id.button_cancel:
-            dialog.dismiss();
-            break;
-        case R.id.button_add:
-            	name = ((EditText) dialog.findViewById(R.id.name)).getText().toString();
-            	length = ((EditText) dialog.findViewById(R.id.length)).getText().toString();
-            if (null != name 
-            	&& 0 != name.compareTo("")
-            	&& null != length 
-            	&& 0 != length.compareTo("")) {
-	            	listOfThingsToDo.add(new ThingToDo(name, Integer.parseInt(length), true));
-	                listCustomAdapter.notifyDataSetChanged();
-	                calculateWakeUpTime();
-	                dialog.dismiss();
-            }
-            break;
-        case R.id.button_modify:
-            	name = ((EditText) dialog.findViewById(R.id.name)).getText().toString();
-            	length = ((EditText) dialog.findViewById(R.id.length)).getText().toString();
-            if (null != name 
-            	&& 0 != name.compareTo("")
-            	&& null != length 
-            	&& 0 != length.compareTo("")) {
-            		int position = (Integer)v.getTag();	//The tag we assigned to the button is actually the position
-            		listOfThingsToDo.get(position).setName(name);
-            		listOfThingsToDo.get(position).setLength(Integer.parseInt(length));
-	                listCustomAdapter.notifyDataSetChanged();
-	                calculateWakeUpTime();
-	                dialog.dismiss();
-            }
-            break;
-        }
+
+		int i = v.getId();
+		if (i == R.id.button_cancel) {
+			dialog.dismiss();
+
+		} else if (i == R.id.button_add) {
+			name = ((EditText) dialog.findViewById(R.id.name)).getText().toString();
+			length = ((EditText) dialog.findViewById(R.id.length)).getText().toString();
+			if (null != name
+					&& 0 != name.compareTo("")
+					&& null != length
+					&& 0 != length.compareTo("")) {
+				listOfThingsToDo.add(new ThingToDo(name, Integer.parseInt(length), true));
+				listCustomAdapter.notifyDataSetChanged();
+				calculateWakeUpTime();
+				dialog.dismiss();
+			}
+
+		} else if (i == R.id.button_modify) {
+			name = ((EditText) dialog.findViewById(R.id.name)).getText().toString();
+			length = ((EditText) dialog.findViewById(R.id.length)).getText().toString();
+			if (null != name
+					&& 0 != name.compareTo("")
+					&& null != length
+					&& 0 != length.compareTo("")) {
+				int position = (Integer) v.getTag();    //The tag we assigned to the button is actually the position
+				listOfThingsToDo.get(position).setName(name);
+				listOfThingsToDo.get(position).setLength(Integer.parseInt(length));
+				listCustomAdapter.notifyDataSetChanged();
+				calculateWakeUpTime();
+				dialog.dismiss();
+			}
+
+		}
     }
     
     @Override
