@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.ilsecondodasinistra.parakeet.aboutmodule" >
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+
+        <activity
+            android:name="com.ilsecondodasinistra.parakeet.shared.AboutActivity"
+            android:label="@string/action_about"
+            android:theme="@style/AppTheme" />
+
+    </application>
+</manifest>

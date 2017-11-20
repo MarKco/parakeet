@@ -37,10 +37,6 @@
                 <data android:scheme="https" />
             </intent-filter>
         </activity>
-        <activity
-            android:name="com.ilsecondodasinistra.parakeet.AboutActivity"
-            android:label="@string/action_about"
-            android:theme="@style/AppTheme"></activity>
 
         <service android:name="com.ilsecondodasinistra.parakeet.NotificationService"></service>
 

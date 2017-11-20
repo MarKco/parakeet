@@ -1,15 +1,16 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 27
 
+
+
     defaultConfig {
-        applicationId "com.ilsecondodasinistra.parakeet"
         minSdkVersion 16
         targetSdkVersion 27
-        versionCode 20
-        versionName "2.6"
-//        multiDexEnabled true
+        versionCode 1
+        versionName "1.0"
+
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
     }
@@ -30,9 +31,8 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation project(':parakeet-base')
-    implementation project(':aboutmodule')
-    implementation 'com.android.support:appcompat-v7:27.0.1'
+
+    implementation 'com.android.support:appcompat-v7:26.1.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'

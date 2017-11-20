@@ -12,6 +12,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.ilsecondodasinistra.parakeet.shared.AboutActivity;
+
 import settings.ParakeetSettingsActivity;
 
 public class DrawerLayoutHelper {

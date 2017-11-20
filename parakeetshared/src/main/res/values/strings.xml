@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Parakeet shared</string>
+    <string name="app_author"><a href="http://www.marcozanetti.it">Marco Zanetti</a></string>
+    <string name="author_email">Mail me: <a href="mailto:ilsecondodasinistra@gmail.com">ilsecondodasinistra@gmail.com</a></string>
+    <string name="app_info">What time should you get up tomorrow?\n\nIt does sound like a simple question, but we know it\'s not. It all depends on what you need to do before you leave: maybe you plan to get a shower, maybe you already took one. Maybe you\'re having breakfast, maybe not. Maybe you\'re going to practice some Yoga, maybe you\'re giving up this hobby for tomorrow.\n\nChoosing the right time to wake up is not easy, because you actually know just the time you need to put your foor out of the door. This is where Parakeet comes in handy! You set up what time you need to leave the house, and then every night you just need to check or uncheck the activities you\'re going to do tomorrow, before you leave. The list is of course customizable according to your needs and preferences. It\'s all you need to get up early, but not a minute earlier than you need!\n\nTry Parakeet today, wake up happier tomorrow.</string>
+    <string name="app_changelog">Version 1.5\n\nLogo by<a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
+    <string name="changelog_title">Changelog</string>
+    <string name="action_about">About Parakeet</string>
+</resources>

@@ -1,4 +1,4 @@
-package com.ilsecondodasinistra.parakeet;
+package com.ilsecondodasinistra.parakeet.shared;
 
 import android.app.Activity;
 import android.os.Bundle;

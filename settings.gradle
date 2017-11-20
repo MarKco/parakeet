@@ -1,1 +1,1 @@
-include ':parakeet-base', ':parakeetapk', ':parakeet-instantapp'
+include ':parakeet-base', ':parakeetapk', ':parakeet-instantapp', ':aboutmodule', ':parakeetshared'

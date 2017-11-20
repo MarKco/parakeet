@@ -40,6 +40,7 @@ import com.github.amlcurran.showcaseview.ShowcaseView;
 import com.ilsecondodasinistra.parakeet.CustomAdapter.ThingToDoCallback;
 import com.ilsecondodasinistra.parakeet.EnhancedListView.OnDismissCallback;
 import com.ilsecondodasinistra.parakeet.EnhancedListView.Undoable;
+import com.ilsecondodasinistra.parakeet.shared.AboutActivity;
 
 public class ParakeetMain extends AppCompatActivity implements ThingToDoCallback, OnClickListener {
 

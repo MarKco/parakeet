@@ -6,4 +6,5 @@ android {
 
 dependencies {
     implementation project(':parakeet-base')
+    implementation project(':aboutmodule')
 }
