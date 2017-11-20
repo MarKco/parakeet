@@ -31,21 +31,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:scheme="http"
-                    android:host="parakeet-instantapp.000webhostapp.com"
-                    android:pathPattern="/open" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="https"
-                    android:host="parakeet-instantapp.000webhostapp.com"
-                    android:pathPattern="/open" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="parakeet-instantapp.000webhostapp.com" />
+                <data android:pathPattern="/open" />
             </intent-filter>
         </activity>
 
