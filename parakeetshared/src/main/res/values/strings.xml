@@ -6,4 +6,5 @@
     <string name="app_changelog">Version 1.5\n\nLogo by<a href="http://it.linkedin.com/in/matteosimoncelli">Matteo Simoncelli</a></string>
     <string name="changelog_title">Changelog</string>
     <string name="action_about">About Parakeet</string>
+    <string name="exit_noti_caption">Notification text on exit</string>
 </resources>

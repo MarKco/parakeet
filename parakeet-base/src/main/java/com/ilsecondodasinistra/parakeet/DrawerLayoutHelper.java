@@ -13,8 +13,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.ilsecondodasinistra.parakeet.shared.AboutActivity;
-
-import settings.ParakeetSettingsActivity;
+import com.ilsecondodasinistra.parakeet.shared.SettingsActivity;
 
 public class DrawerLayoutHelper {
 
@@ -139,7 +138,7 @@ public class DrawerLayoutHelper {
 			break;
 		case 3:
 			//Start Settings Activity
-			Intent i = new Intent(this.activity, ParakeetSettingsActivity.class);
+			Intent i = new Intent(this.activity, SettingsActivity.class);
 			this.activity.startActivity(i);
 //			this.activity.sendMail();
 			break;

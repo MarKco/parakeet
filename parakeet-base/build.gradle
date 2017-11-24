@@ -1,17 +1,18 @@
 apply plugin: 'com.android.feature'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion "27.0.1"
+    compileSdkVersion project.myCompileSdkVersion.toInteger()
+    buildToolsVersion project.myBuildToolsVersion
     baseFeature = true
 
     defaultConfig {
 //        applicationId "com.ilsecondodasinistra.parakeet"
-        minSdkVersion 16
-        targetSdkVersion 27
-        versionCode 23
-        versionName "2.9"
+        minSdkVersion project.myMinSdkVersion.toInteger()
+        targetSdkVersion project.myTargetSdkVersion.toInteger()
+        versionCode project.myVersionCode.toInteger()
+        versionName project.myVersionName
 //        multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
     }
     buildTypes {
         release {
@@ -23,6 +24,7 @@ android {
 }
 
 dependencies {
+    api 'com.android.support:support-vector-drawable:27.0.1'
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile "com.android.support:appcompat-v7:27.0.1"
     compile 'com.android.support:support-v4:27.0.1'

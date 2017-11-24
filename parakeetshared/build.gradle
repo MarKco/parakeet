@@ -1,15 +1,13 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 27
-
-
+    compileSdkVersion project.myCompileSdkVersion.toInteger()
 
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 27
-        versionCode 23
-        versionName "2.9"
+        minSdkVersion project.myMinSdkVersion.toInteger()
+        targetSdkVersion project.myTargetSdkVersion.toInteger()
+        versionCode project.myVersionCode.toInteger()
+        versionName project.myVersionName
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
@@ -31,9 +29,10 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-
     implementation 'com.android.support:appcompat-v7:27.0.1'
+    compile 'com.android.support:support-v4:27.0.1'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+    compile 'com.google.android.instantapps:instantapps:1.1.0'
 }

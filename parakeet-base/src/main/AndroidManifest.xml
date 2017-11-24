@@ -1,30 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ilsecondodasinistra.parakeet"
     android:installLocation="auto"
     android:targetSandboxVersion="2">
 
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-        android:name="MyApplication">
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
         <meta-data
             android:name="asset_statements"
             android:resource="@string/asset_statements" />
 
         <activity
-            android:name="com.ilsecondodasinistra.parakeet.ParakeetMain"
+            android:name=".ParakeetMain"
             android:label="@string/app_name"
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
             <meta-data
-            android:name="default-url"
-            android:value="https://parakeet-instantapp.000webhostapp.com/open" />
+                android:name="default-url"
+                android:value="https://parakeet-instantapp.000webhostapp.com/open" />
+
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
 
@@ -38,19 +45,31 @@
             </intent-filter>
         </activity>
 
-        <service android:name="com.ilsecondodasinistra.parakeet.NotificationService"></service>
+        <service android:name=".NotificationService" />
 
-        <receiver android:name="com.ilsecondodasinistra.parakeet.OnAlarmReceiver"></receiver>
+        <receiver android:name=".OnAlarmReceiver" />
 
         <activity
-            android:name="settings.ParakeetSettingsActivity"
-            android:label="@string/title_activity_parakeet_settings"
-            android:theme="@style/AppTheme"></activity>
+            android:name=".shared.SettingsActivity"
+            android:label="@string/title_activity_settings">
+            <intent-filter android:order="1">
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:host="parakeet-instantapp.000webhostapp.com" />
+                <data android:pathPattern="/settings"/>
+                <data android:scheme="https" />
+                <data android:scheme="http" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.ilsecondodasinistra.parakeet.SETTINGS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
-
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 </manifest>

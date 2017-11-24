@@ -21,6 +21,7 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.AlarmClock;
+import android.support.annotation.MainThread;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -35,6 +36,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.TimePicker;
+import android.widget.Toast;
 
 import com.github.amlcurran.showcaseview.ShowcaseView;
 import com.ilsecondodasinistra.parakeet.CustomAdapter.ThingToDoCallback;
@@ -83,7 +85,11 @@ public class ParakeetMain extends AppCompatActivity implements ThingToDoCallback
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_parakeet_main);
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		
+
+		Intent launchingIntent = getIntent();
+		if(launchingIntent.getAction() != null && launchingIntent.getAction().length() > 0)
+            Toast.makeText(ParakeetMain.this, launchingIntent.getAction(), Toast.LENGTH_SHORT).show();
+
 		/* Gets actionBar for ApplicationDrawer */
 		actionBar = getSupportActionBar();
 		actionBar.setTitle(getString(R.string.app_name));

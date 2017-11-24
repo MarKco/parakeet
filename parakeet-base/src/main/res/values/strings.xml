@@ -27,7 +27,6 @@
     <!-- Time-to-leave Notification -->
     <string name="notification_time_to_leave_text">It\'s time to leave! Drop the crosswords, get dressed and reach for the door!</string>
     <string name="notification_time_to_leave_title">Time to leave!</string>
-    <string name="exit_noti_caption">Notification text on exit</string>
     <string name="delete_notification_custom_text">Reset custom notification</string>
     <string name="reset_noti_toast">Notification set to default</string>
 
