@@ -110,7 +110,7 @@ private fun AlarmScreen(prefs: RingingPrefs, ringingSince: Long, onDismiss: () -
 
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxSize(),
-        color = ParakeetDarker,
+        color = androidx.compose.ui.graphics.Color(0xFF080A06),
         contentColor = MaterialTheme.colorScheme.onBackground,
     ) {
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {

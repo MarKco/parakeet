@@ -315,8 +315,9 @@ private fun HeaderCard(state: MainUiState, onEditExit: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.extraLarge)
-                .background(ParakeetDarker)
-                .border(1.dp, ParakeetLime.copy(alpha = if (isSystemInDarkTheme()) 0.22f else 0f), MaterialTheme.shapes.extraLarge)
+                // Dark theme: a near-black "display" with a clear lime edge, instead of one more olive slab
+                .background(if (isSystemInDarkTheme()) Color(0xFF080A06) else ParakeetDarker)
+                .border(1.dp, ParakeetLime.copy(alpha = if (isSystemInDarkTheme()) 0.5f else 0f), MaterialTheme.shapes.extraLarge)
                 .padding(top = 20.dp, bottom = 22.dp)
                 .semantics(mergeDescendants = true) {},
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -324,7 +325,7 @@ private fun HeaderCard(state: MainUiState, onEditExit: () -> Unit) {
             Text(
                 stringResource(R.string.wake_up_label).uppercase(),
                 style = OverlineStyle,
-                color = ParakeetLime.copy(alpha = 0.75f),
+                color = ParakeetLime.copy(alpha = 0.9f),
             )
             LcdText(
                 text = plan?.wakeAt?.lcd() ?: "--:--",
@@ -335,7 +336,7 @@ private fun HeaderCard(state: MainUiState, onEditExit: () -> Unit) {
             Text(
                 plan?.let { dayLabel(it.wakeAt, LocalDate.now()) } ?: stringResource(R.string.exit_not_set),
                 style = MaterialTheme.typography.titleMedium,
-                color = ParakeetLime.copy(alpha = 0.85f),
+                color = ParakeetLime,
             )
         }
 
@@ -494,11 +495,21 @@ private fun SwipeableTaskRow(
 @Composable
 private fun TaskRow(task: Task, shape: RoundedCornerShape, onToggle: (Task) -> Unit, onEdit: (Task) -> Unit) {
     val container by animateColorAsState(
-        if (task.checked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        when {
+            !task.checked -> MaterialTheme.colorScheme.surfaceContainer
+            // Dark: a lighter neutral row (the lime check badge and edge say "selected"), not a heavy green bar
+            isSystemInDarkTheme() -> MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> MaterialTheme.colorScheme.primaryContainer
+        },
         label = "rowColor",
     )
     val textAlpha by animateFloatAsState(if (task.checked) 1f else 0.72f, label = "rowAlpha")
-    Surface(shape = shape, color = container, modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        shape = shape,
+        color = container,
+        border = if (task.checked && isSystemInDarkTheme()) BorderStroke(1.dp, ParakeetLime.copy(alpha = 0.55f)) else null,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             modifier = Modifier
                 // The whole row is the toggle (except the edit button)
