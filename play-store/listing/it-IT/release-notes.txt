@@ -1,0 +1,7 @@
+Parakeet 4.0: tutto nuovo!
+• Nuova grafica, più chiara e più comoda da toccare, anche per tablet e tema scuro
+• Vedi a colpo d'occhio a che ora svegliarti e quanto tempo ti serve
+• Tocca un'attività per includerla, scorri per eliminarla (con Annulla)
+• La sveglia viene creata in silenzio nell'app Orologio, senza doppioni
+• Primo avvio guidato e piccole animazioni
+• Le tue attività e l'orario di uscita vengono mantenuti

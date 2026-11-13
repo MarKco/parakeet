@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Parakeet icon</title>
+  <defs>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="earCut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="#fff"/>
+      <circle cx="259" cy="270" r="262" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- ears -->
+  <g fill="#324511" mask="url(#earCut)">
+    <circle cx="78" cy="76" r="72"/>
+    <circle cx="438" cy="76" r="72"/>
+  </g>
+  <!-- body -->
+  <circle cx="259" cy="270" r="241" fill="#324511"/>
+  <!-- dial -->
+  <circle cx="260" cy="272" r="166" fill="#a9c607"/>
+  <!-- hands -->
+  <g stroke="#4a5925" stroke-width="22" stroke-linecap="butt" fill="none">
+    <path d="M258 272 L158 226"/>
+    <path d="M262 270 L358 172"/>
+  </g>
+  <circle cx="260" cy="272" r="27" fill="#324511"/>
+  <!-- gloss -->
+  <ellipse cx="245" cy="152" rx="155" ry="97" fill="url(#gloss)"/>
+</svg>

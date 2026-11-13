@@ -116,3 +116,8 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 
 parakeetapk/release/
+
+# Release signing secrets
+keystore.properties
+*.keystore
+app/release/

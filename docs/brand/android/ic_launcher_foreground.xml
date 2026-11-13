@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: parakeet_icon.svg scaled into the 66dp safe zone (108dp viewport). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <group android:translateX="22" android:translateY="22" android:scaleX="0.125" android:scaleY="0.125">
+    <!-- ears (left/right) -->
+    <path android:fillColor="#324511"
+        android:pathData="M6,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0 M366,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0"/>
+    <!-- body -->
+    <path android:fillColor="#324511"
+        android:pathData="M18,270a241,241 0 1,0 482,0a241,241 0 1,0 -482,0"/>
+    <!-- dial -->
+    <path android:fillColor="#A9C607"
+        android:pathData="M94,272a166,166 0 1,0 332,0a166,166 0 1,0 -332,0"/>
+    <!-- hands -->
+    <path android:strokeColor="#4A5925" android:strokeWidth="22" android:pathData="M258,272L158,226 M262,270L358,172"/>
+    <path android:fillColor="#324511"
+        android:pathData="M233,272a27,27 0 1,0 54,0a27,27 0 1,0 -54,0"/>
+    <!-- gloss -->
+    <path android:pathData="M90,152a155,97 0 1,0 310,0a155,97 0 1,0 -310,0">
+      <aapt:attr name="android:fillColor">
+        <gradient android:type="linear" android:startX="0" android:startY="55" android:endX="0" android:endY="249">
+          <item android:offset="0" android:color="#F2FFFFFF"/>
+          <item android:offset="0.55" android:color="#73FFFFFF"/>
+          <item android:offset="1" android:color="#00FFFFFF"/>
+        </gradient>
+      </aapt:attr>
+    </path>
+  </group>
+</vector>

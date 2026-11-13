@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome status-bar glyph: alarm clock with ears. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="512" android:viewportHeight="512">
+  <path android:fillColor="#FFFFFF"
+      android:pathData="M6,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0 M366,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0"/>
+  <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+      android:pathData="M18,270a241,241 0 1,0 482,0a241,241 0 1,0 -482,0 M94,272a166,166 0 1,0 332,0a166,166 0 1,0 -332,0"/>
+  <path android:strokeColor="#FFFFFF" android:strokeWidth="26" android:pathData="M258,272L158,226 M262,270L358,172"/>
+</vector>

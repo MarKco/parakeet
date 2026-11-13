@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Parakeet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/parakeet_surface</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Shown while the app starts (data migration / first read) -->
+    <style name="Theme.Parakeet.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/parakeet_surface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Parakeet</item>
+    </style>
+</resources>

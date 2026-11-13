@@ -1,0 +1,26 @@
+What time should you get up tomorrow?
+
+It sounds like an easy question, but it isn't. It all depends on what you need to do before you leave: a shower, breakfast, a coffee, walking the dog… The only thing you really know is when you have to be out of the door.
+
+Parakeet does the math for you. Set your exit time, pick the activities you'll do tomorrow morning, and Parakeet works out when to wake you up: not a minute earlier, not a minute later.
+
+HOW IT WORKS
+• Set the time you leave home.
+• Tap the activities you'll do tomorrow: each one has a duration you can change.
+• At the top you instantly see your wake-up time, the day, and how long you need to get ready.
+• Tap "Set alarm" and the alarm is created in your phone's Clock app, without duplicates.
+• At your exit time Parakeet can send you a notification ("Time to leave!"), with a text of your choice.
+
+WHY YOU'LL LIKE IT
+• One clear screen: the result is always in front of you, on a radio-clock style display.
+• Your activities, your durations: add, edit and delete whenever you like (swipe to delete, with "Undo" if you slip).
+• A short guided first run with a preview of your wake-up time.
+• Light and dark theme, designed for tablets too.
+• No account, no ads, no network connection: your activities stay on your device.
+
+UPDATING FROM THE PREVIOUS VERSION
+Your activities and exit time are kept automatically.
+
+The alarm is created in the system Clock app. For the notification at exactly your exit time, Parakeet may ask you to allow notifications and "Alarms & reminders" access: if you'd rather not, the app still works, but the notification may arrive a few minutes late.
+
+It's everything you need to get up early, but not a minute earlier. Try Parakeet today, wake up happier tomorrow.

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Main -->
+    <string name="wake_up_label">Sveglia</string>
+    <string name="day_today">Oggi</string>
+    <string name="day_tomorrow">Domani</string>
+    <string name="exit_at">Uscita alle</string>
+    <string name="exit_not_set">Imposta ora</string>
+    <string name="prep_total">%1$s di preparativi</string>
+    <string name="duration_hm">%1$dh %2$02dm</string>
+    <string name="duration_m">%1$d min</string>
+    <string name="select_something">Scegli almeno un\'attività</string>
+    <string name="set_alarm_cta">Punta sveglia alle %1$s</string>
+    <string name="alarm_status">Sveglia alle %1$s · uscita alle %2$s</string>
+    <string name="alarm_cancel">Annulla</string>
+    <string name="alarm_set_done">Sveglia puntata alle %1$s</string>
+    <string name="alarm_cancelled">Sveglia annullata</string>
+    <string name="alarm_no_clock_app">Nessuna app Orologio trovata su questo dispositivo</string>
+    <string name="alarm_cancel_hint">Se la sveglia è ancora nell\'app Orologio, puoi eliminarla da lì</string>
+    <string name="tasks_empty">Nessuna attività. Aggiungi quello che fai prima di uscire di casa.</string>
+    <string name="add_task">Aggiungi attività</string>
+    <string name="edit_task">Modifica attività</string>
+    <string name="task_name">Attività</string>
+    <string name="task_minutes">Durata (min)</string>
+    <string name="save">Salva</string>
+    <string name="cancel">Annulla</string>
+    <string name="ok">OK</string>
+    <string name="delete">Elimina</string>
+    <string name="undo">Annulla</string>
+    <string name="task_deleted">Rimossa “%1$s”</string>
+    <string name="exit_time_title">A che ora esci?</string>
+    <string name="today_or_tomorrow_hint">La prossima volta sarà %1$s</string>
+
+    <!-- Settings & about -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="about_title">Info su Parakeet</string>
+    <string name="notify_on_exit">Avvisami quando è ora di uscire</string>
+    <string name="notify_on_exit_desc">Una notifica all\'ora di uscita</string>
+    <string name="notif_permission_denied">Le notifiche sono bloccate. Abilitale dalle impostazioni di sistema.</string>
+    <string name="open_system_settings">Apri impostazioni</string>
+    <string name="exact_alarm_title">Puntualità</string>
+    <string name="exact_alarm_granted">La notifica arriva esattamente all\'ora impostata</string>
+    <string name="exact_alarm_denied">Senza l\'accesso a “Sveglie e promemoria” la notifica può arrivare con qualche minuto di ritardo</string>
+    <string name="exact_alarm_allow">Consenti</string>
+    <string name="exit_text_title">Testo della notifica</string>
+    <string name="exit_text_hint">Lascia vuoto per il testo predefinito</string>
+    <string name="exit_text_reset">Ripristina</string>
+    <string name="about_body">A che ora devi alzarti domani?\n\nDipende da quello che devi fare prima di uscire: una doccia, la colazione, portare fuori il cane… Quello che sai davvero è solo a che ora devi essere fuori di casa. Imposta l\'orario di uscita, scegli le attività che farai e Parakeet calcola quando svegliarti e punta la sveglia per te.\n\nHai tutto quello che ti serve per svegliarti presto, ma non un minuto prima.</string>
+    <string name="about_version">Versione %1$s</string>
+    <string name="about_author">Di Marco Zanetti</string>
+    <string name="about_logo_credit">Progetto grafico del logo di Matteo Simoncelli</string>
+    <string name="about_contact">Contattami</string>
+
+    <!-- Onboarding -->
+    <string name="onb_welcome_title">Svegliati esattamente quando serve</string>
+    <string name="onb_welcome_body">Dimmi quando esci di casa. Ti dico quando svegliarti.</string>
+    <string name="onb_start">Iniziamo</string>
+    <string name="onb_exit_title">A che ora esci di solito?</string>
+    <string name="onb_tasks_title">Cosa fai la mattina?</string>
+    <string name="onb_tasks_hint">Scegli le attività e regola i minuti</string>
+    <string name="onb_wake_preview">Ti sveglieresti alle %1$s</string>
+    <string name="onb_notify_title">Ti avviso quando è ora di uscire?</string>
+    <string name="onb_notify_body">Parakeet può mandarti una notifica all\'ora di uscita, così non perdi il filo del tempo.</string>
+    <string name="onb_allow">Consenti notifiche</string>
+    <string name="onb_notify_ready">Notifiche attive</string>
+    <string name="onb_next">Avanti</string>
+    <string name="onb_back">Indietro</string>
+    <string name="onb_skip">Salta</string>
+    <string name="onb_done">Andiamo</string>
+    <string name="onb_no_thanks">No, grazie</string>
+
+    <string-array name="suggestion_names">
+        <item>Doccia</item>
+        <item>Vestirsi</item>
+        <item>Colazione</item>
+        <item>Lavare i denti</item>
+        <item>Fare il caffè</item>
+        <item>Barba / trucco</item>
+        <item>Preparare il pranzo</item>
+        <item>Rifare il letto</item>
+        <item>Portare giù la spazzatura</item>
+        <item>Portare fuori il cane</item>
+    </string-array>
+
+    <!-- What's new -->
+    <string name="whatsnew_title">Parakeet 4.0</string>
+    <string name="whatsnew_body">Nuova grafica e un flusso più semplice:\n• Vedi a colpo d\'occhio quando svegliarti e quanto tempo ti serve\n• Tocca un\'attività per includerla, scorri per eliminarla\n• La sveglia viene creata in silenzio nell\'app Orologio, senza duplicati\n• Le tue attività e l\'orario di uscita sono stati mantenuti\n\nGrazie per usare Parakeet!</string>
+
+    <!-- Notifications -->
+    <string name="channel_exit_name">Ora di uscire</string>
+    <string name="channel_exit_description">Promemoria inviato all\'ora di uscita</string>
+    <string name="notification_exit_title">Ora di uscire!</string>
+    <string name="notification_exit_text">È ora di andare! Metti giù le parole crociate, esci dal bagno e corri!</string>
+
+    <!-- Accessibility -->
+    <string name="cd_edit">Modifica</string>
+    <string name="cd_settings">Impostazioni</string>
+    <string name="cd_back">Indietro</string>
+    <string name="cd_info">Info</string>
+    <string name="cd_set_exit">Cambia ora di uscita</string>
+    <string name="prep_label">Preparativi</string>
+    <string name="tasks_section">La tua mattina</string>
+    <string name="tasks_selected">%1$d di %2$d selezionate</string>
+    <string name="cd_edit_task">Modifica %1$s</string>
+</resources>
