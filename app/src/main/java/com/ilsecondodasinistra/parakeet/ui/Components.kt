@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -122,12 +126,38 @@ fun TaskDialog(task: Task?, onSave: (String, Int) -> Unit, onDelete: (() -> Unit
     )
 }
 
+/** New in 5.0: offers the in-app alarm to people updating from earlier versions. */
 @Composable
-fun WhatsNewDialog(onDismiss: () -> Unit) {
+fun AlarmIntroDialog(onAnswer: (useParakeetAlarm: Boolean) -> Unit) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { onAnswer(false) },
         title = { Text(stringResource(R.string.whatsnew_title)) },
         text = { Text(stringResource(R.string.whatsnew_body)) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
+        confirmButton = { TextButton(onClick = { onAnswer(true) }) { Text(stringResource(R.string.whatsnew_try)) } },
+        dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text(stringResource(R.string.whatsnew_keep)) } },
     )
+}
+
+/** Selectable card with a radio button: the whole card is the tap target. */
+@Composable
+fun ChoiceCard(selected: Boolean, title: String, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                .heightIn(min = 72.dp)
+                .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(12.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
 }

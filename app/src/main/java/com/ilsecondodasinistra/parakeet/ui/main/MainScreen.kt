@@ -104,7 +104,7 @@ import com.ilsecondodasinistra.parakeet.ui.AnimatedParakeetIcon
 import com.ilsecondodasinistra.parakeet.ui.LcdText
 import com.ilsecondodasinistra.parakeet.ui.TaskDialog
 import com.ilsecondodasinistra.parakeet.ui.TimePickerDialog
-import com.ilsecondodasinistra.parakeet.ui.WhatsNewDialog
+import com.ilsecondodasinistra.parakeet.ui.AlarmIntroDialog
 import com.ilsecondodasinistra.parakeet.ui.dayLabel
 import com.ilsecondodasinistra.parakeet.ui.formatDuration
 import com.ilsecondodasinistra.parakeet.ui.lcd
@@ -147,6 +147,7 @@ fun MainScreen(
                     snackbar.showSnackbar(context.getString(R.string.alarm_set_done, event.wakeAt.lcd()), duration = SnackbarDuration.Short)
                 }
                 MainEvent.NoClockApp -> snackbar.showSnackbar(context.getString(R.string.alarm_no_clock_app))
+                MainEvent.NeedsExactAlarm -> snackbar.showSnackbar(context.getString(R.string.mode_needs_permission))
                 MainEvent.AlarmCancelled -> snackbar.showSnackbar(context.getString(R.string.alarm_cancelled))
                 is MainEvent.TaskRemoved -> {
                     val result = snackbar.showSnackbar(
@@ -300,7 +301,7 @@ fun MainScreen(
             onDismiss = { editingTaskId = null },
         )
     }
-    if (state.showWhatsNew) WhatsNewDialog(onDismiss = viewModel::dismissWhatsNew)
+    if (state.showAlarmIntro) AlarmIntroDialog(onAnswer = viewModel::answerAlarmIntro)
 }
 
 // ---- Header: radio-clock display + two flat rows ---------------------------------------------

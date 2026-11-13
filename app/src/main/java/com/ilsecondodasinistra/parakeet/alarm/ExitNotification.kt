@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ilsecondodasinistra.parakeet.MainActivity
 import com.ilsecondodasinistra.parakeet.R
+import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +26,7 @@ import javax.inject.Singleton
 
 object Notifications {
     const val CHANNEL_EXIT = "exit"
+    const val CHANNEL_ALARM = "alarm"
 
     fun createChannels(context: Context) {
         val channel = NotificationChannel(
@@ -32,7 +34,17 @@ object Notifications {
             context.getString(R.string.channel_exit_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply { description = context.getString(R.string.channel_exit_description) }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val alarm = NotificationChannel(
+            CHANNEL_ALARM,
+            context.getString(R.string.channel_alarm_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.channel_alarm_description)
+            setSound(null, null) // the alarm sound is played by AlarmService on the alarm stream
+            enableVibration(false)
+            setBypassDnd(true)
+        }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alarm))
     }
 
     fun canPost(context: Context): Boolean =
@@ -118,6 +130,7 @@ class ExitAlarmReceiver : BroadcastReceiver() {
 class RescheduleReceiver : BroadcastReceiver() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scheduler: ExitNotificationScheduler
+    @Inject lateinit var internalAlarm: InternalAlarmScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
@@ -125,6 +138,9 @@ class RescheduleReceiver : BroadcastReceiver() {
             try {
                 val current = settings.current()
                 val alarm = current.activeAlarm
+                if (current.alarmMode == AlarmMode.INTERNAL && alarm != null && alarm.wakeAtMillis > System.currentTimeMillis()) {
+                    internalAlarm.setAt(alarm.wakeAtMillis)
+                }
                 if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {
                     scheduler.schedule(alarm.exitAtMillis)
                 }

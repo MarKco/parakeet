@@ -82,6 +82,7 @@ import com.ilsecondodasinistra.parakeet.ui.AnimatedParakeetIcon
 import com.ilsecondodasinistra.parakeet.ui.LcdText
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import com.ilsecondodasinistra.parakeet.ui.ChoiceCard
 import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import java.time.LocalDateTime
@@ -105,6 +106,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList())) }   // pre-selected suggestions
     var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes.toList())) }
     var notify by rememberSaveable { mutableStateOf(true) }
+    var internalAlarm by rememberSaveable { mutableStateOf(true) }
     var notifyGranted by rememberSaveable { mutableStateOf(hasNotificationPermission(context)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -120,7 +122,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
         LocalDateTime.now(),
     )
 
-    fun finish() = viewModel.completeOnboarding(exitTime, chosen, notify && notifyGranted)
+    fun finish() = viewModel.completeOnboarding(exitTime, chosen, notify && notifyGranted, internalAlarm)
 
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
     Column(
@@ -170,6 +172,25 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         }
                         }
                     }
+                    3 -> {
+                        Title(R.string.onb_alarm_title)
+                        Text(stringResource(R.string.onb_alarm_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ChoiceCard(
+                                selected = internalAlarm,
+                                title = stringResource(R.string.mode_internal),
+                                description = stringResource(R.string.mode_internal_desc),
+                                onClick = { internalAlarm = true },
+                            )
+                            ChoiceCard(
+                                selected = !internalAlarm,
+                                title = stringResource(R.string.mode_clock),
+                                description = stringResource(R.string.mode_clock_desc),
+                                onClick = { internalAlarm = false },
+                            )
+                        }
+                    }
                     else -> {
                         Title(R.string.onb_notify_title)
                         Text(stringResource(R.string.onb_notify_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
@@ -199,7 +220,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             Spacer(Modifier.size(12.dp))
         }
         if (step > 0) {
-            StepDots(step - 1, 3)
+            StepDots(step - 1, 4)
             Spacer(Modifier.size(12.dp))
         }
         // Navigation row
@@ -211,7 +232,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 else -> {
                     TextButton(onClick = { step -= 1 }) { Text(stringResource(R.string.onb_back)) }
                     Spacer(Modifier.weight(1f))
-                    if (step == 3) {
+                    if (step == 4) {
                         if (!notifyGranted) {
                             TextButton(onClick = { notify = false; finish() }) { Text(stringResource(R.string.onb_no_thanks)) }
                         }

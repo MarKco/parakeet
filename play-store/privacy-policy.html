@@ -18,7 +18,7 @@
 
 <section id="it" lang="it">
 <h1>Parakeet – Informativa sulla privacy</h1>
-<p><em>Ultimo aggiornamento: 13 novembre 2026</em></p>
+<p><em>Ultimo aggiornamento: 14 novembre 2026</em></p>
 
 <p>Parakeet (<code>com.ilsecondodasinistra.parakeet</code>) è un'app Android che calcola l'ora della sveglia a partire dall'orario di uscita da casa e dalle attività mattutine scelte dall'utente. Questa informativa spiega quali dati usa l'app e come vengono trattati.</p>
 
@@ -30,7 +30,8 @@
   <li>l'elenco delle attività mattutine (nome e durata in minuti) e se sono selezionate;</li>
   <li>l'orario abituale di uscita da casa;</li>
   <li>le impostazioni (notifica all'uscita attiva o no, testo personalizzato della notifica);</li>
-  <li>le informazioni sull'ultima sveglia impostata (orario della sveglia e dell'uscita), per mostrarne lo stato e per riprogrammare la notifica dopo un riavvio.</li>
+  <li>le informazioni sull'ultima sveglia impostata (orario della sveglia e dell'uscita), per mostrarne lo stato e per riprogrammare sveglia e notifica dopo un riavvio.</li>
+  <li>le opzioni della sveglia (suoneria, vibrazione, posticipo, modo di spegnimento e, se lo scegli, il testo del QR code che hai inquadrato).</li>
 </ul>
 <p>Questi dati restano esclusivamente nella memoria privata dell'app sul dispositivo. Vengono eliminati disinstallando l'app o cancellandone i dati dalle impostazioni di sistema. Chi aggiorna dalle versioni precedenti di Parakeet ritrova le proprie attività: i dati vengono letti una sola volta dal vecchio archivio dell'app e spostati in quello nuovo, sempre sul dispositivo.</p>
 
@@ -40,7 +41,11 @@
 <tr><td>Impostare sveglie (<code>SET_ALARM</code>)</td><td>Creare la sveglia nell'app Orologio del dispositivo.</td></tr>
 <tr><td>Notifiche (<code>POST_NOTIFICATIONS</code>)</td><td>Mostrare la notifica "Ora di uscire!" all'orario di uscita. Facoltativo: si può rifiutare o disattivare nelle impostazioni.</td></tr>
 <tr><td>Sveglie e promemoria (<code>SCHEDULE_EXACT_ALARM</code>)</td><td>Far arrivare la notifica di uscita all'ora esatta. Facoltativo: senza, la notifica può arrivare con qualche minuto di ritardo.</td></tr>
-<tr><td>Avvio del dispositivo (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Riprogrammare la notifica di uscita dopo un riavvio del telefono.</td></tr>
+<tr><td>Avvio del dispositivo (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Riprogrammare la notifica di uscita e la sveglia dopo un riavvio del telefono.</td></tr>
+<tr><td>Sveglie esatte (<code>USE_EXACT_ALARM</code>)</td><td>Far suonare la sveglia di Parakeet all'ora esatta. Concesso automaticamente (Android 13+); su Android 12 si usa `SCHEDULE_EXACT_ALARM`, concesso dall'utente.</td></tr>
+<tr><td>Schermo intero (<code>USE_FULL_SCREEN_INTENT</code>)</td><td>Mostrare la schermata della sveglia anche a telefono bloccato. Facoltativo.</td></tr>
+<tr><td>Servizio in primo piano (<code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_SYSTEM_EXEMPTED</code>), <code>WAKE_LOCK</code>, <code>VIBRATE</code></td><td>Far suonare e vibrare la sveglia finché non viene spenta.</td></tr>
+<tr><td>Fotocamera (<code>CAMERA</code>)</td><td>Solo se scegli di spegnere la sveglia con un QR code: l'app legge il codice sul dispositivo. Nessuna immagine viene salvata o inviata. Facoltativo.</td></tr>
 </table>
 
 <h2>Servizi di terze parti e link esterni</h2>
@@ -63,7 +68,7 @@
 
 <section id="en" lang="en">
 <h1>Parakeet – Privacy policy</h1>
-<p><em>Last updated: 13 November 2026</em></p>
+<p><em>Last updated: 14 November 2026</em></p>
 
 <p>Parakeet (<code>com.ilsecondodasinistra.parakeet</code>) is an Android app that works out your wake-up time from the time you leave home and the morning activities you choose. This policy explains which data the app uses and how it is handled.</p>
 
@@ -75,7 +80,8 @@
   <li>your list of morning activities (name and duration in minutes) and whether they are selected;</li>
   <li>your usual exit time;</li>
   <li>settings (exit notification on or off, custom notification text);</li>
-  <li>details of the last alarm you set (alarm and exit times), to show its status and to reschedule the notification after a restart.</li>
+  <li>details of the last alarm you set (alarm and exit times), to show its status and to reschedule the alarm and the notification after a restart.</li>
+  <li>your alarm options (sound, vibration, snooze, how to stop it and, if you choose it, the text of the QR code you scanned).</li>
 </ul>
 <p>This data stays exclusively in the app's private storage on your device. It is deleted when you uninstall the app or clear its data in the system settings. If you update from a previous version of Parakeet your activities are carried over: the data is read once from the old app storage and moved to the new one, always on your device.</p>
 
@@ -85,7 +91,11 @@
 <tr><td>Set alarms (<code>SET_ALARM</code>)</td><td>Create the alarm in your device's Clock app.</td></tr>
 <tr><td>Notifications (<code>POST_NOTIFICATIONS</code>)</td><td>Show the "Time to leave!" notification at your exit time. Optional: you can decline or turn it off in settings.</td></tr>
 <tr><td>Alarms &amp; reminders (<code>SCHEDULE_EXACT_ALARM</code>)</td><td>Deliver the exit notification at the exact time. Optional: without it the notification may arrive a few minutes late.</td></tr>
-<tr><td>Run at startup (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Reschedule the exit notification after the phone restarts.</td></tr>
+<tr><td>Run at startup (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Reschedule the exit notification and the alarm after the phone restarts.</td></tr>
+<tr><td>Exact alarms (<code>USE_EXACT_ALARM</code>)</td><td>Ring the Parakeet alarm at the exact time. Granted automatically (Android 13+); on Android 12 `SCHEDULE_EXACT_ALARM` is used, granted by the user.</td></tr>
+<tr><td>Full screen (<code>USE_FULL_SCREEN_INTENT</code>)</td><td>Show the alarm screen even when the phone is locked. Optional.</td></tr>
+<tr><td>Foreground service (<code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_SYSTEM_EXEMPTED</code>), <code>WAKE_LOCK</code>, <code>VIBRATE</code></td><td>Ring and vibrate until the alarm is switched off.</td></tr>
+<tr><td>Camera (<code>CAMERA</code>)</td><td>Only if you choose to stop the alarm with a QR code: the code is read on the device. No image is stored or sent. Optional.</td></tr>
 </table>
 
 <h2>Third parties and external links</h2>

@@ -3,7 +3,7 @@ package com.ilsecondodasinistra.parakeet.di
 import android.content.Context
 import androidx.room.Room
 import com.ilsecondodasinistra.parakeet.alarm.AlarmScheduler
-import com.ilsecondodasinistra.parakeet.alarm.ClockAppScheduler
+import com.ilsecondodasinistra.parakeet.alarm.RoutingAlarmScheduler
 import com.ilsecondodasinistra.parakeet.data.AppDatabase
 import com.ilsecondodasinistra.parakeet.data.TaskDao
 import dagger.Binds
@@ -30,5 +30,5 @@ object AppModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AlarmModule {
-    @Binds abstract fun alarmScheduler(impl: ClockAppScheduler): AlarmScheduler
+    @Binds abstract fun alarmScheduler(impl: RoutingAlarmScheduler): AlarmScheduler
 }

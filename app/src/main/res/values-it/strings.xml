@@ -83,8 +83,6 @@
     </string-array>
 
     <!-- What's new -->
-    <string name="whatsnew_title">Parakeet 4.0</string>
-    <string name="whatsnew_body">Nuova grafica e un flusso più semplice:\n• Vedi a colpo d\'occhio quando svegliarti e quanto tempo ti serve\n• Tocca un\'attività per includerla, scorri per eliminarla\n• La sveglia viene creata in silenzio nell\'app Orologio, senza duplicati\n• Le tue attività e l\'orario di uscita sono stati mantenuti\n\nGrazie per usare Parakeet!</string>
 
     <!-- Notifications -->
     <string name="channel_exit_name">Ora di uscire</string>
@@ -102,4 +100,62 @@
     <string name="tasks_section">La tua mattina</string>
     <string name="tasks_selected">%1$d di %2$d selezionate</string>
     <string name="cd_edit_task">Modifica %1$s</string>
+
+    <!-- Ringing alarm -->
+    <string name="channel_alarm_name">Sveglia</string>
+    <string name="channel_alarm_description">La sveglia di Parakeet</string>
+    <string name="alarm_ring_title">È ora di svegliarsi!</string>
+    <string name="alarm_ring_text">Tocca per aprire la sveglia</string>
+    <string name="alarm_snooze">Posticipa di %1$d min</string>
+    <string name="challenge_slide">Scorri per spegnere</string>
+    <string name="challenge_math">Risolvi per spegnere la sveglia</string>
+    <string name="challenge_math_wrong">Sbagliato, eccone un altro</string>
+    <string name="challenge_confirm">Conferma</string>
+    <string name="challenge_shake">Scuoti il telefono per spegnere la sveglia</string>
+    <string name="challenge_qr">Inquadra il tuo QR code per spegnere la sveglia</string>
+    <string name="challenge_qr_wrong">Non è il tuo codice</string>
+    <string name="challenge_qr_no_camera">Serve la fotocamera per leggere il codice</string>
+    <string name="challenge_qr_grant">Consenti fotocamera</string>
+    <string name="challenge_qr_cant_scan">Non riesco a inquadrarlo</string>
+
+    <!-- Alarm settings -->
+    <string name="settings_alarm_section">Sveglia</string>
+    <string name="mode_title">Tipo di sveglia</string>
+    <string name="mode_internal">Sveglia di Parakeet</string>
+    <string name="mode_internal_desc">Suona da sola, anche sopra il blocco schermo</string>
+    <string name="mode_clock">App Orologio</string>
+    <string name="mode_clock_desc">Crea una sveglia nell\'app Orologio del dispositivo</string>
+    <string name="mode_needs_permission">Per suonare da sola, Parakeet ha bisogno dell\'accesso a “Sveglie e promemoria”</string>
+    <string name="mode_allow">Consenti</string>
+    <string name="ringtone_title">Suoneria</string>
+    <string name="ringtone_default">Suoneria predefinita della sveglia</string>
+    <string name="vibrate_title">Vibrazione</string>
+    <string name="snooze_title">Posticipa</string>
+    <string name="snooze_off">Disattivato</string>
+    <string name="snooze_minutes">%1$d min</string>
+    <string name="challenge_title">Per spegnere la sveglia</string>
+    <string name="challenge_opt_slide">Scorri</string>
+    <string name="challenge_opt_math">Calcolo</string>
+    <string name="challenge_opt_shake">Scuoti</string>
+    <string name="challenge_opt_qr">QR code</string>
+    <string name="math_ops_title">Operazioni: %1$d</string>
+    <string name="shake_count_title">Scosse: %1$d</string>
+    <string name="qr_not_set">Nessun codice salvato: finché non ne inquadri uno, la sveglia si spegne scorrendo</string>
+    <string name="qr_saved">QR code salvato</string>
+    <string name="qr_scan">Inquadra il codice</string>
+    <string name="qr_replace">Inquadra un nuovo codice</string>
+    <string name="qr_scan_hint">Inquadra il codice che leggerai ogni mattina, per esempio un\'etichetta in bagno. Resta solo su questo dispositivo.</string>
+    <string name="fsi_title">Mostra sopra il blocco schermo</string>
+    <string name="fsi_granted">La schermata della sveglia appare anche a telefono bloccato</string>
+    <string name="fsi_denied">Senza questo permesso a telefono bloccato la sveglia mostra solo una notifica</string>
+    <string name="alarm_test">Prova la sveglia (suona tra 5 s)</string>
+    <string name="alarm_test_started">La sveglia suonerà tra 5 secondi</string>
+
+    <!-- 5.0 introduction -->
+    <string name="whatsnew_title">Parakeet 5.0</string>
+    <string name="whatsnew_body">Ora Parakeet può far suonare la sveglia da solo:\n• Scegli suoneria, vibrazione e posticipo\n• Spegnila scorrendo, risolvendo un calcolo, scuotendo il telefono o inquadrando un QR code\n• Suona anche sopra il blocco schermo\n\nLe tue attività e l\'orario di uscita sono mantenuti. Puoi tornare all\'app Orologio dalle Impostazioni.</string>
+    <string name="whatsnew_try">Usa la sveglia di Parakeet</string>
+    <string name="whatsnew_keep">Resta con l\'app Orologio</string>
+    <string name="onb_alarm_title">Come vuoi essere svegliato?</string>
+    <string name="onb_alarm_body">Parakeet può far suonare la sveglia da solo, oppure crearla nell\'app Orologio. Potrai cambiare dalle Impostazioni.</string>
 </resources>

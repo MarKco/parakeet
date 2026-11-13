@@ -97,8 +97,6 @@
     </integer-array>
 
     <!-- What\'s new (existing users) -->
-    <string name="whatsnew_title">Parakeet 4.0</string>
-    <string name="whatsnew_body">Brand new look and a simpler flow:\n• See at a glance when to wake up and how long you need\n• Tap an activity to include it, swipe to remove it\n• The alarm is created quietly in your Clock app, without duplicates\n• Your activities and exit time were kept\n\nThank you for using Parakeet!</string>
 
     <!-- Notifications -->
     <string name="channel_exit_name">Time to leave</string>
@@ -116,4 +114,62 @@
     <string name="tasks_section">Your morning</string>
     <string name="tasks_selected">%1$d of %2$d selected</string>
     <string name="cd_edit_task">Edit %1$s</string>
+
+    <!-- Ringing alarm -->
+    <string name="channel_alarm_name">Alarm</string>
+    <string name="channel_alarm_description">The Parakeet wake-up alarm</string>
+    <string name="alarm_ring_title">Time to wake up!</string>
+    <string name="alarm_ring_text">Tap to open the alarm</string>
+    <string name="alarm_snooze">Snooze %1$d min</string>
+    <string name="challenge_slide">Slide to stop</string>
+    <string name="challenge_math">Solve it to stop the alarm</string>
+    <string name="challenge_math_wrong">Wrong, here is a new one</string>
+    <string name="challenge_confirm">Confirm</string>
+    <string name="challenge_shake">Shake the phone to stop the alarm</string>
+    <string name="challenge_qr">Scan your QR code to stop the alarm</string>
+    <string name="challenge_qr_wrong">That\'s not your code</string>
+    <string name="challenge_qr_no_camera">Camera access is needed to scan your code</string>
+    <string name="challenge_qr_grant">Allow camera</string>
+    <string name="challenge_qr_cant_scan">I can\'t scan it</string>
+
+    <!-- Alarm settings -->
+    <string name="settings_alarm_section">Alarm</string>
+    <string name="mode_title">Alarm type</string>
+    <string name="mode_internal">Parakeet alarm</string>
+    <string name="mode_internal_desc">Rings by itself, even over the lock screen</string>
+    <string name="mode_clock">Clock app</string>
+    <string name="mode_clock_desc">Creates an alarm in your device\'s Clock app</string>
+    <string name="mode_needs_permission">To ring by itself, Parakeet needs access to “Alarms &amp; reminders”</string>
+    <string name="mode_allow">Allow</string>
+    <string name="ringtone_title">Sound</string>
+    <string name="ringtone_default">Default alarm sound</string>
+    <string name="vibrate_title">Vibrate</string>
+    <string name="snooze_title">Snooze</string>
+    <string name="snooze_off">Off</string>
+    <string name="snooze_minutes">%1$d min</string>
+    <string name="challenge_title">To stop the alarm</string>
+    <string name="challenge_opt_slide">Slide</string>
+    <string name="challenge_opt_math">Math</string>
+    <string name="challenge_opt_shake">Shake</string>
+    <string name="challenge_opt_qr">QR code</string>
+    <string name="math_ops_title">Operations: %1$d</string>
+    <string name="shake_count_title">Shakes: %1$d</string>
+    <string name="qr_not_set">No code saved yet: until you scan one, the alarm stops with a slide</string>
+    <string name="qr_saved">QR code saved</string>
+    <string name="qr_scan">Scan code</string>
+    <string name="qr_replace">Scan a new code</string>
+    <string name="qr_scan_hint">Point the camera at the code you will scan every morning, for example a label in the bathroom. It stays on this device.</string>
+    <string name="fsi_title">Show over the lock screen</string>
+    <string name="fsi_granted">The alarm screen appears even when the phone is locked</string>
+    <string name="fsi_denied">Without this the alarm only shows a notification when the phone is locked</string>
+    <string name="alarm_test">Test the alarm (rings in 5 s)</string>
+    <string name="alarm_test_started">The alarm will ring in 5 seconds</string>
+
+    <!-- 5.0 introduction -->
+    <string name="whatsnew_title">Parakeet 5.0</string>
+    <string name="whatsnew_body">Now Parakeet can ring the alarm by itself:\n• Choose the sound, vibration and snooze\n• Stop it by sliding, solving a sum, shaking the phone or scanning a QR code\n• It rings over the lock screen\n\nYour activities and exit time are kept. You can switch back to the Clock app in Settings.</string>
+    <string name="whatsnew_try">Use the Parakeet alarm</string>
+    <string name="whatsnew_keep">Keep the Clock app</string>
+    <string name="onb_alarm_title">How do you want to wake up?</string>
+    <string name="onb_alarm_body">Parakeet can ring the alarm itself, or create it in your Clock app. You can change it later in Settings.</string>
 </resources>

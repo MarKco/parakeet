@@ -21,12 +21,31 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 /** Alarm already set through the Clock app, kept to show its status and to allow cancelling. */
 data class ActiveAlarm(val wakeAtMillis: Long, val exitAtMillis: Long)
 
+enum class AlarmMode { CLOCK, INTERNAL }
+
+/** How the ringing alarm is switched off. */
+enum class Challenge { SLIDE, MATH, SHAKE, QR }
+
+/** Options of the in-app ringing alarm. [snoozeMinutes] 0 = snooze disabled. [ringtone] empty = system default alarm. */
+data class RingingPrefs(
+    val ringtone: String = "",
+    val vibrate: Boolean = true,
+    val snoozeMinutes: Int = 10,
+    val challenge: Challenge = Challenge.SLIDE,
+    val mathOps: Int = 3,
+    val shakeCount: Int = 20,
+    val qrValue: String = "",
+)
+
 data class Settings(
     val exitTime: LocalTime?,           // null until the user chooses one
     val onboardingDone: Boolean,
     val notifyOnExit: Boolean,
     val exitText: String,               // empty = default text
     val activeAlarm: ActiveAlarm?,
+    val alarmMode: AlarmMode,           // CLOCK until the user opts in to the in-app alarm
+    val alarmIntroSeen: Boolean,        // the "new in 5.0" card was answered
+    val ringing: RingingPrefs,
 )
 
 @Singleton
@@ -41,6 +60,15 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val alarmExitAt = longPreferencesKey("alarm_exit_at")
         val legacyMigrated = booleanPreferencesKey("legacy_migrated")
         val lastSeenVersion = intPreferencesKey("last_seen_version")
+        val alarmMode = stringPreferencesKey("alarm_mode")
+        val alarmIntroSeen = booleanPreferencesKey("alarm_intro_seen")
+        val ringtone = stringPreferencesKey("ringtone")
+        val vibrate = booleanPreferencesKey("vibrate")
+        val snoozeMinutes = intPreferencesKey("snooze_minutes")
+        val challenge = stringPreferencesKey("challenge")
+        val mathOps = intPreferencesKey("math_ops")
+        val shakeCount = intPreferencesKey("shake_count")
+        val qrValue = stringPreferencesKey("qr_value")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -56,6 +84,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             notifyOnExit = this[Keys.notifyOnExit] ?: true,
             exitText = this[Keys.exitText].orEmpty(),
             activeAlarm = if (wake != null && exit != null) ActiveAlarm(wake, exit) else null,
+            alarmMode = this[Keys.alarmMode]?.let { runCatching { AlarmMode.valueOf(it) }.getOrNull() } ?: AlarmMode.CLOCK,
+            alarmIntroSeen = this[Keys.alarmIntroSeen] ?: false,
+            ringing = RingingPrefs(
+                ringtone = this[Keys.ringtone].orEmpty(),
+                vibrate = this[Keys.vibrate] ?: true,
+                snoozeMinutes = this[Keys.snoozeMinutes] ?: 10,
+                challenge = this[Keys.challenge]?.let { runCatching { Challenge.valueOf(it) }.getOrNull() } ?: Challenge.SLIDE,
+                mathOps = this[Keys.mathOps] ?: 3,
+                shakeCount = this[Keys.shakeCount] ?: 20,
+                qrValue = this[Keys.qrValue].orEmpty(),
+            ),
         )
     }
 
@@ -84,4 +123,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun lastSeenVersion(): Int = context.dataStore.data.first()[Keys.lastSeenVersion] ?: 0
 
     suspend fun setLastSeenVersion(code: Int) = context.dataStore.edit { it[Keys.lastSeenVersion] = code }
+
+    suspend fun setAlarmMode(mode: AlarmMode) = context.dataStore.edit {
+        it[Keys.alarmMode] = mode.name; it[Keys.alarmIntroSeen] = true
+    }
+
+    suspend fun setAlarmIntroSeen() = context.dataStore.edit { it[Keys.alarmIntroSeen] = true }
+
+    suspend fun updateRinging(transform: (RingingPrefs) -> RingingPrefs) = context.dataStore.edit {
+        val new = transform(it.toSettings().ringing)
+        it[Keys.ringtone] = new.ringtone
+        it[Keys.vibrate] = new.vibrate
+        it[Keys.snoozeMinutes] = new.snoozeMinutes
+        it[Keys.challenge] = new.challenge.name
+        it[Keys.mathOps] = new.mathOps
+        it[Keys.shakeCount] = new.shakeCount
+        it[Keys.qrValue] = new.qrValue
+    }
 }

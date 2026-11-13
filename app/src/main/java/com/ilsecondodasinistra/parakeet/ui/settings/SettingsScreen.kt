@@ -92,6 +92,8 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
             Modifier.widthIn(max = 640.dp).padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            AlarmSection(state, viewModel)
+
             // Notification switch: the whole row toggles
             SettingsCard {
                 Row(
