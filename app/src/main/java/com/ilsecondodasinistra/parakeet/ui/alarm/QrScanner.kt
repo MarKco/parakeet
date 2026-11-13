@@ -9,6 +9,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,16 +31,18 @@ fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnCode by rememberUpdatedState(onCode)
-    val executor = Executors.newSingleThreadExecutor()
-    val scanner = BarcodeScanning.getClient(
-        BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build(),
-    )
-    var provider: ProcessCameraProvider? = null
+    // Created once: recomposition must not leak new executors/detectors (nor close the ones in use)
+    val executor = remember { Executors.newSingleThreadExecutor() }
+    val scanner = remember {
+        BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
+    }
+    val providerHolder = remember { arrayOfNulls<ProcessCameraProvider>(1) }
 
     DisposableEffect(Unit) {
         onDispose {
-            provider?.unbindAll()
-            scanner.close()
+            // Stop the camera first so no frame reaches the analyzer after the detector is closed
+            providerHolder[0]?.unbindAll()
+            executor.execute { scanner.close() }
             executor.shutdown()
         }
     }
@@ -54,7 +57,7 @@ fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
             val future = ProcessCameraProvider.getInstance(ctx)
             future.addListener({
                 val cameraProvider = future.get()
-                provider = cameraProvider
+                providerHolder[0] = cameraProvider
                 val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
