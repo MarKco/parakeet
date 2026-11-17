@@ -54,12 +54,12 @@ fun LcdText(text: String, size: TextUnit, modifier: Modifier = Modifier, color: 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimePickerDialog(initial: LocalTime, onConfirm: (LocalTime) -> Unit, onDismiss: () -> Unit) {
+fun TimePickerDialog(initial: LocalTime, onConfirm: (LocalTime) -> Unit, onDismiss: () -> Unit, title: String? = null) {
     val context = LocalContext.current
     val state = rememberTimePickerState(initial.hour, initial.minute, DateFormat.is24HourFormat(context))
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.exit_time_title)) },
+        title = { Text(title ?: stringResource(R.string.exit_time_title)) },
         text = { TimePicker(state = state) },
         confirmButton = {
             TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text(stringResource(R.string.ok)) }

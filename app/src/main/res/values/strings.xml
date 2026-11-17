@@ -257,4 +257,6 @@
     <string name="onb_mode_title">How do you want to use Parakeet?</string>
     <string name="onb_mode_body">You can switch any time in Settings, without losing anything.</string>
     <string name="alarm_action_stop">Stop</string>
+    <string name="evening_desc_plain">A notification the evening before, with tomorrow\'s alarm and a Skip button</string>
+    <string name="evening_time_title">Notification time</string>
 </resources>

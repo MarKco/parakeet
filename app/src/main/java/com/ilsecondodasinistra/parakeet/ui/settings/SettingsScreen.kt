@@ -38,6 +38,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -228,20 +234,47 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
         Column {
             SwitchRow(
                 title = stringResource(R.string.evening_title),
-                description = stringResource(R.string.evening_desc, evening.format(java.time.format.DateTimeFormatter.ofPattern("H:mm"))),
+                description = stringResource(R.string.evening_desc_plain),
                 checked = prefs.eveningSummary,
                 onChange = viewModel::setEveningSummary,
             )
-            if (prefs.eveningSummary) {
-                TextButton(onClick = { pickEvening = true }, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp).heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.cd_edit))
-                }
+            // The time is always visible and the whole row opens the picker (dimmed while the summary is off)
+            androidx.compose.material3.HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClickLabel = stringResource(R.string.evening_time_title), role = Role.Button) { pickEvening = true }
+                    .alpha(if (prefs.eveningSummary) 1f else 0.6f)
+                    .heightIn(min = 64.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    androidx.compose.material.icons.Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.evening_time_title), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                com.ilsecondodasinistra.parakeet.ui.LcdText(
+                    evening.format(java.time.format.DateTimeFormatter.ofPattern("H:mm")),
+                    30.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.width(16.dp))
+                Icon(
+                    androidx.compose.material.icons.Icons.Filled.Edit,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
     if (pickEvening) {
         com.ilsecondodasinistra.parakeet.ui.TimePickerDialog(
             initial = evening,
+            title = stringResource(R.string.evening_time_title),
             onConfirm = { viewModel.setEveningTime(it); pickEvening = false },
             onDismiss = { pickEvening = false },
         )

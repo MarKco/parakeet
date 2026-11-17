@@ -243,4 +243,6 @@
     <string name="onb_mode_title">Come vuoi usare Parakeet?</string>
     <string name="onb_mode_body">Puoi cambiare quando vuoi dalle Impostazioni, senza perdere nulla.</string>
     <string name="alarm_action_stop">Spegni</string>
+    <string name="evening_desc_plain">Una notifica la sera prima, con la sveglia di domani e il pulsante Salta</string>
+    <string name="evening_time_title">Orario della notifica</string>
 </resources>
