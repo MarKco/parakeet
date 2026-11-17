@@ -187,7 +187,7 @@
     <string name="day_free">No alarm on this day</string>
     <string name="day_free_hint">Switch it on for a one-time alarm</string>
     <string name="day_paused">Alarms paused until %1$s</string>
-    <string name="day_rung">Already rang this morning</string>
+    <string name="day_rung">Already rang</string>
     <string name="day_modified">Changed only for %1$s</string>
     <string name="day_reset">Reset</string>
     <string name="day_save_to">Save in %1$s</string>

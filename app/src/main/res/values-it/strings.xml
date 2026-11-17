@@ -173,7 +173,7 @@
     <string name="day_free">Nessuna sveglia questo giorno</string>
     <string name="day_free_hint">Accendila per una sveglia una tantum</string>
     <string name="day_paused">Sveglie in pausa fino a %1$s</string>
-    <string name="day_rung">Ha già suonato stamattina</string>
+    <string name="day_rung">Ha già suonato</string>
     <string name="day_modified">Modificato solo per %1$s</string>
     <string name="day_reset">Ripristina</string>
     <string name="day_save_to">Salva in %1$s</string>

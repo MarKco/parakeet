@@ -340,7 +340,7 @@ fun DayHeader(day: DayUi, onToggle: (Boolean) -> Unit, onPickRoutine: () -> Unit
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
         }
-        if (day.rings) {
+        if (day.rings && !day.rung) {
             RoutineChip(day.routine, onClick = onPickRoutine, modifier = Modifier.padding(top = 6.dp))
         }
     }

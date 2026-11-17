@@ -259,7 +259,8 @@ fun MainScreen(
                 item(key = "dayHeader") {
                     DayHeader(day, onToggle = viewModel::setDayOn, onPickRoutine = { showRoutineSheet = true })
                 }
-                if (day.rings && day.exitTime != null) {
+                // A day that already rang cannot change any more: only its summary is shown
+                if (day.rings && !day.rung && day.exitTime != null) {
                     item(key = "exit") {
                         Column {
                             HeaderRow(
