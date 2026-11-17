@@ -22,8 +22,8 @@ android {
         applicationId = "com.ilsecondodasinistra.parakeet"
         minSdk = 29
         targetSdk = 36
-        versionCode = 50
-        versionName = "5.0"
+        versionCode = 51
+        versionName = "5.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
