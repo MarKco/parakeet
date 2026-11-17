@@ -430,7 +430,18 @@ fun MainScreen(
         )
     }
     if (showPause) PauseDialog(today = state.now.toLocalDate(), onPause = { viewModel.pauseUntil(it); showPause = false }, onDismiss = { showPause = false })
-    if (state.showAlarmIntro) AlarmIntroDialog(onAnswer = viewModel::answerAlarmIntro)
+    if (state.showAlarmIntro) {
+        // "Use the Parakeet alarm" first asks for notifications: without them it stays on the Clock app
+        val introLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            notificationsOn = Notifications.canPost(context)
+            viewModel.answerAlarmIntro(granted)
+        }
+        AlarmIntroDialog(onAnswer = { useParakeet ->
+            if (useParakeet && !Notifications.canPost(context) && Build.VERSION.SDK_INT >= 33) {
+                introLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else viewModel.answerAlarmIntro(useParakeet)
+        })
+    }
 }
 
 /** Snackbar text after a change: "Alarm tue 18 at 6:45 · in 9 h 12 min". */

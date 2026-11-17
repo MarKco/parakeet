@@ -8,6 +8,7 @@ import com.ilsecondodasinistra.parakeet.alarm.AlarmScheduler
 import com.ilsecondodasinistra.parakeet.alarm.AlarmSync
 import com.ilsecondodasinistra.parakeet.alarm.ExitNotificationScheduler
 import com.ilsecondodasinistra.parakeet.alarm.InternalAlarmScheduler
+import com.ilsecondodasinistra.parakeet.alarm.Notifications
 import com.ilsecondodasinistra.parakeet.data.ActiveAlarm
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.LegacyMigration
@@ -203,7 +204,11 @@ class MainViewModel @Inject constructor(
 
     /** Answer to the "new in 5.0" card: try the Parakeet alarm or keep the Clock app. */
     fun answerAlarmIntro(useParakeetAlarm: Boolean) = viewModelScope.launch {
-        if (useParakeetAlarm && canScheduleExactAlarms()) switchAlarmMode(AlarmMode.INTERNAL) else settings.setAlarmIntroSeen()
+        if (useParakeetAlarm && canUseInternalAlarm()) switchAlarmMode(AlarmMode.INTERNAL)
+        else {
+            settings.setAlarmIntroSeen()
+            if (useParakeetAlarm) _events.emit(MainEvent.NeedsExactAlarm)
+        }
     }
 
     // ---- the selected day (one-time changes) -----------------------------------------------------
@@ -398,7 +403,7 @@ class MainViewModel @Inject constructor(
         notify: Boolean,
         internalAlarm: Boolean,
     ) = viewModelScope.launch {
-        settings.setAlarmMode(if (internalAlarm && canScheduleExactAlarms()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
+        settings.setAlarmMode(if (internalAlarm && canUseInternalAlarm()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
         settings.setExitTime(exitTime)
         val ids = if (tasks.count() == 0) chosen.map { (name, minutes) -> tasks.add(name, minutes) }
         else tasks.tasks.first().filter { it.checked }.map { it.id }
@@ -438,10 +443,17 @@ class MainViewModel @Inject constructor(
 
     fun canScheduleExactAlarms(): Boolean = exitNotifications.canScheduleExact()
 
+    /**
+     * The in-app alarm is allowed only with exact alarms AND notifications: without notifications it would ring
+     * with no visible way to stop it (no full-screen intent, no notification).
+     */
+    fun canUseInternalAlarm(): Boolean = canScheduleExactAlarms() && Notifications.canPost(context)
+
     fun setAlarmMode(mode: AlarmMode) = viewModelScope.launch { switchAlarmMode(mode) }
 
     /** Switches between Clock app and in-app alarm. The in-app alarm follows the weekly plan by itself. */
     private suspend fun switchAlarmMode(mode: AlarmMode) {
+        if (mode == AlarmMode.INTERNAL && !canUseInternalAlarm()) return
         val s = settings.current()
         if (s.alarmMode == AlarmMode.CLOCK && mode == AlarmMode.INTERNAL && s.activeAlarm != null) {
             alarmScheduler.cancel() // remove the Clock app alarm we created

@@ -246,4 +246,6 @@
     <string name="pause_title">Pause alarms until…</string>
     <string name="menu_pause">Pause alarms…</string>
     <string name="notif_blocked_alarm">Notifications are off: when the alarm rings you won\'t see it on the lock screen and it may be hard to stop.</string>
+    <string name="mode_needs_notifications">To ring by itself, Parakeet needs notifications: that\'s how the alarm appears when it rings. Until then it uses the Clock app.</string>
+    <string name="onb_notify_alarm_needed">The Parakeet alarm uses notifications to appear when it rings: without them you\'ll use the Clock app.</string>
 </resources>

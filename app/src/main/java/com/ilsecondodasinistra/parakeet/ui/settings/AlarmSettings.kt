@@ -48,6 +48,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.ilsecondodasinistra.parakeet.R
+import com.ilsecondodasinistra.parakeet.alarm.Notifications
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.Challenge
 import com.ilsecondodasinistra.parakeet.ui.ChoiceCard
@@ -63,12 +64,45 @@ fun AlarmSection(state: MainUiState, viewModel: MainViewModel) {
     var wantsInternal by remember { mutableStateOf(false) }
     var fullScreenAllowed by remember { mutableStateOf(canUseFullScreen(context)) }
     var showScanner by remember { mutableStateOf(false) }
+    var askedNotifications by remember { mutableStateOf(false) }
+    var notificationLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>? = null
 
-    // Back from the system "Alarms & reminders" / full-screen screens
+    var notificationsOn by remember { mutableStateOf(Notifications.canPost(context)) }
+
+    // The in-app alarm needs notifications first (that's how it appears), then "Alarms & reminders"
+    fun tryInternal() {
+        notificationsOn = Notifications.canPost(context)
+        exactAllowed = viewModel.canScheduleExactAlarms()
+        when {
+            !notificationsOn -> {
+                wantsInternal = true
+                if (Build.VERSION.SDK_INT >= 33 && !askedNotifications) {
+                    askedNotifications = true
+                    notificationLauncher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                    )
+                }
+            }
+            !exactAllowed -> {
+                wantsInternal = true
+                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+            }
+            else -> { wantsInternal = false; viewModel.setAlarmMode(AlarmMode.INTERNAL) }
+        }
+    }
+    notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsOn = Notifications.canPost(context)
+        if (granted) tryInternal()
+    }
+
+    // Back from the system notification / "Alarms & reminders" / full-screen screens
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         exactAllowed = viewModel.canScheduleExactAlarms()
+        notificationsOn = Notifications.canPost(context)
         fullScreenAllowed = canUseFullScreen(context)
-        if (wantsInternal && exactAllowed) { viewModel.setAlarmMode(AlarmMode.INTERNAL); wantsInternal = false }
+        if (wantsInternal && viewModel.canUseInternalAlarm()) { viewModel.setAlarmMode(AlarmMode.INTERNAL); wantsInternal = false }
     }
 
     Text(stringResource(R.string.settings_alarm_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
@@ -77,13 +111,7 @@ fun AlarmSection(state: MainUiState, viewModel: MainViewModel) {
         selected = state.alarmMode == AlarmMode.INTERNAL,
         title = stringResource(R.string.mode_internal),
         description = stringResource(R.string.mode_internal_desc),
-        onClick = {
-            if (exactAllowed) viewModel.setAlarmMode(AlarmMode.INTERNAL)
-            else {
-                wantsInternal = true
-                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
-            }
-        },
+        onClick = ::tryInternal,
     )
     ChoiceCard(
         selected = state.alarmMode == AlarmMode.CLOCK,
@@ -91,6 +119,14 @@ fun AlarmSection(state: MainUiState, viewModel: MainViewModel) {
         description = stringResource(R.string.mode_clock_desc),
         onClick = { wantsInternal = false; viewModel.setAlarmMode(AlarmMode.CLOCK) },
     )
+    if (wantsInternal && state.alarmMode != AlarmMode.INTERNAL) {
+        Text(
+            stringResource(if (!notificationsOn) R.string.mode_needs_notifications else R.string.mode_needs_permission),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+    }
     if (state.alarmMode != AlarmMode.INTERNAL) return
 
     val prefs = state.ringing

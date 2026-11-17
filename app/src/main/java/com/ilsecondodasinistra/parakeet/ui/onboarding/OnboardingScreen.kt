@@ -138,7 +138,8 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     fun finish() = viewModel.completeOnboarding(
         exitTime, chosen, daySet,
         AlarmPlanner.suggestedName(daySet, weekdaysName, weekendName, defaultName),
-        notify && notifyGranted, internalAlarm,
+        notify && notifyGranted,
+        internalAlarm && notifyGranted, // the in-app alarm needs notifications to appear when it rings
     )
 
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
@@ -238,6 +239,15 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                     else -> {
                         Title(R.string.onb_notify_title)
                         Text(stringResource(R.string.onb_notify_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        if (internalAlarm && !notifyGranted) {
+                            Spacer(Modifier.size(12.dp))
+                            Text(
+                                stringResource(R.string.onb_notify_alarm_needed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                         Spacer(Modifier.size(24.dp))
                         if (notifyGranted) {
                             Text(stringResource(R.string.onb_notify_ready), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
