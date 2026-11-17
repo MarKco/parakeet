@@ -32,25 +32,33 @@ class InternalAlarmScheduler @Inject constructor(
             context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(atMillis, showApp), ringIntent(snooze, if (test) TEST_REQUEST_CODE else REQUEST_CODE))
+        // Wake-up, snooze and test use separate slots: re-arming the next wake-up never cancels a snooze
+        val requestCode = when {
+            test -> TEST_REQUEST_CODE
+            snooze -> SNOOZE_REQUEST_CODE
+            else -> REQUEST_CODE
+        }
+        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(atMillis, showApp), ringIntent(snooze, test, requestCode))
         return true
     }
 
     override suspend fun cancel(): Boolean {
-        alarmManager.cancel(ringIntent(false, REQUEST_CODE))
+        alarmManager.cancel(ringIntent(false, false, REQUEST_CODE))
         return true
     }
 
-    private fun ringIntent(snooze: Boolean, requestCode: Int): PendingIntent = PendingIntent.getBroadcast(
+    private fun ringIntent(snooze: Boolean, test: Boolean, requestCode: Int): PendingIntent = PendingIntent.getBroadcast(
         context,
         requestCode,
-        Intent(context, AlarmReceiver::class.java).putExtra(EXTRA_SNOOZE, snooze),
+        Intent(context, AlarmReceiver::class.java).putExtra(EXTRA_SNOOZE, snooze).putExtra(EXTRA_TEST, test),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
     companion object {
         const val EXTRA_SNOOZE = "snooze"
+        const val EXTRA_TEST = "test"
         private const val REQUEST_CODE = 2
         private const val TEST_REQUEST_CODE = 3
+        private const val SNOOZE_REQUEST_CODE = 4
     }
 }

@@ -13,9 +13,8 @@ class TaskRepository @Inject constructor(private val dao: TaskDao) {
 
     suspend fun count() = dao.count()
 
-    suspend fun add(name: String, minutes: Int, checked: Boolean = true) {
+    suspend fun add(name: String, minutes: Int, checked: Boolean = true): Long =
         dao.insert(TaskEntity(name = name.trim(), minutes = minutes, checked = checked, position = dao.nextPosition()))
-    }
 
     suspend fun update(task: Task) = dao.update(task.toEntity())
 
@@ -23,9 +22,9 @@ class TaskRepository @Inject constructor(private val dao: TaskDao) {
 
     suspend fun delete(id: Long) = dao.delete(id)
 
-    /** Re-inserts a removed task at its old position (undo). */
+    /** Re-inserts a removed task with its old id (undo): its routine memberships come back with it. */
     suspend fun restore(task: Task) {
-        dao.insert(task.toEntity().copy(id = 0))
+        dao.insert(task.toEntity())
     }
 
     suspend fun importAll(tasks: List<Task>) {

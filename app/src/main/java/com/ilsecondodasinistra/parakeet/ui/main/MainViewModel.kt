@@ -1,20 +1,30 @@
 package com.ilsecondodasinistra.parakeet.ui.main
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.alarm.AlarmScheduler
+import com.ilsecondodasinistra.parakeet.alarm.AlarmSync
 import com.ilsecondodasinistra.parakeet.alarm.ExitNotificationScheduler
 import com.ilsecondodasinistra.parakeet.alarm.InternalAlarmScheduler
 import com.ilsecondodasinistra.parakeet.data.ActiveAlarm
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
-import com.ilsecondodasinistra.parakeet.data.RingingPrefs
 import com.ilsecondodasinistra.parakeet.data.LegacyMigration
+import com.ilsecondodasinistra.parakeet.data.PlanPrefs
+import com.ilsecondodasinistra.parakeet.data.PlanRepository
+import com.ilsecondodasinistra.parakeet.data.RingingPrefs
+import com.ilsecondodasinistra.parakeet.data.Settings
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
 import com.ilsecondodasinistra.parakeet.data.TaskRepository
+import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
+import com.ilsecondodasinistra.parakeet.domain.DayPlan
+import com.ilsecondodasinistra.parakeet.domain.DaySchedule
+import com.ilsecondodasinistra.parakeet.domain.Routine
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.domain.WakeUpCalculator
-import com.ilsecondodasinistra.parakeet.domain.WakeUpPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,91 +33,172 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Inject
 
+/** Alarm sent to the Clock app (Clock mode only). */
 data class AlarmStatus(val wakeAt: LocalDateTime, val exitAt: LocalDateTime)
+
+/** The selected day, as the day editor shows it. Editing it creates a one-time plan for that date. */
+data class DayUi(
+    val date: LocalDate,
+    val schedule: DaySchedule,
+    val weekly: Routine?,        // routine that owns this weekday (enabled)
+    val override: DayPlan?,
+    val routine: Routine?,       // routine in use, or the one it would use
+    val exitTime: LocalTime?,
+    val taskIds: Set<Long>,
+    val paused: Boolean,
+    val rung: Boolean,           // its alarm already rang
+) {
+    val rings: Boolean get() = schedule.rings
+    val modified: Boolean get() = override is DayPlan.Custom
+}
 
 data class MainUiState(
     val ready: Boolean = false,
     val showOnboarding: Boolean = false,
     val showAlarmIntro: Boolean = false,
+    val now: LocalDateTime = LocalDateTime.now(),
     val tasks: List<Task> = emptyList(),
-    val exitTime: LocalTime? = null,
-    val plan: WakeUpPlan? = null,
-    val alarm: AlarmStatus? = null,
+    val routines: List<Routine> = emptyList(),
+    val ribbon: List<DaySchedule> = emptyList(),
+    val next: DaySchedule? = null,
+    val day: DayUi? = null,
+    val pausedUntil: LocalDate? = null,
+    val lastRungDay: LocalDate? = null,
+    val clockAlarm: AlarmStatus? = null,
+    val showDaysHint: Boolean = false,
     val notifyOnExit: Boolean = true,
     val exitText: String = "",
     val alarmMode: AlarmMode = AlarmMode.CLOCK,
     val ringing: RingingPrefs = RingingPrefs(),
+    val planPrefs: PlanPrefs = PlanPrefs(),
 )
 
 sealed interface MainEvent {
-    data class AlarmSet(val wakeAt: LocalDateTime) : MainEvent
+    /** The alarm moved (or disappeared) after a change: confirmation snackbar. */
+    data class NextChanged(val next: DaySchedule?) : MainEvent
+    data class AlarmSentToClock(val wakeAt: LocalDateTime) : MainEvent
     data object NoClockApp : MainEvent
     data object NeedsExactAlarm : MainEvent
     data object AlarmCancelled : MainEvent
     data class TaskRemoved(val task: Task) : MainEvent
+    /** A day was switched on but there is no routine yet: open the editor for it. */
+    data class CreateRoutineFor(val date: LocalDate) : MainEvent
 }
+
+private const val RIBBON_DAYS = 56
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val tasks: TaskRepository,
+    private val plan: PlanRepository,
     private val settings: SettingsRepository,
     private val migration: LegacyMigration,
     private val alarmScheduler: AlarmScheduler,
     private val internalAlarm: InternalAlarmScheduler,
     private val exitNotifications: ExitNotificationScheduler,
+    private val alarmSync: AlarmSync,
     private val clock: Clock,
 ) : ViewModel() {
 
-    private val startup = MutableStateFlow(Startup())
+    private val startup = MutableStateFlow(false)
+    private val selectedDate = MutableStateFlow<LocalDate?>(null)
     private val _events = MutableSharedFlow<MainEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<MainEvent> = _events.asSharedFlow()
 
-    private data class Startup(val ready: Boolean = false)
-
-    /** Emits the current time every 30 s so "today/tomorrow" and the plan stay fresh while the app is open. */
+    /** Emits the current time every 15 s: countdown, "today/tomorrow" and the ribbon stay fresh. */
     private val ticker = flow {
         while (true) {
             emit(LocalDateTime.now(clock))
-            delay(30_000)
+            delay(15_000)
         }
     }
 
-    val state: StateFlow<MainUiState> = combine(
-        tasks.tasks, settings.settings, startup, ticker,
-    ) { taskList, s, start, now ->
-        val exitTime = s.exitTime
-        val alarm = s.activeAlarm
-            ?.takeIf { it.exitAtMillis > System.currentTimeMillis() }
+    private data class Data(
+        val tasks: List<Task>,
+        val routines: List<Routine>,
+        val overrides: Map<LocalDate, DayPlan>,
+        val settings: Settings,
+    )
+
+    private val data = combine(tasks.tasks, plan.routines, plan.overrides, settings.settings, ::Data)
+
+    val state: StateFlow<MainUiState> = combine(data, startup, selectedDate, ticker) { d, ready, selected, now ->
+        val s = d.settings
+        val today = now.toLocalDate()
+        val paused = s.plan.pausedUntil?.let(LocalDate::ofEpochDay)?.takeIf { !it.isBefore(today) }
+        val lastRung = s.plan.lastRungDay?.let(LocalDate::ofEpochDay)
+        val next = AlarmPlanner.next(now, d.routines, d.overrides, d.tasks, paused, lastRung)
+        val ribbon = AlarmPlanner.range(today, RIBBON_DAYS, d.routines, d.overrides, d.tasks, paused)
+        val date = selected?.takeIf { !it.isBefore(today) } ?: next?.date ?: today.plusDays(1)
+        val clockAlarm = s.activeAlarm
+            ?.takeIf { s.alarmMode == AlarmMode.CLOCK && it.exitAtMillis > System.currentTimeMillis() }
             ?.let { AlarmStatus(it.wakeAtMillis.toLocal(), it.exitAtMillis.toLocal()) }
         MainUiState(
-            ready = start.ready,
-            showOnboarding = start.ready && !s.onboardingDone,
-            showAlarmIntro = start.ready && s.onboardingDone && !s.alarmIntroSeen,
-            tasks = taskList,
-            exitTime = exitTime,
-            plan = exitTime?.let { WakeUpCalculator.plan(it, taskList, now) },
-            alarm = alarm,
+            ready = ready,
+            showOnboarding = ready && !s.onboardingDone,
+            showAlarmIntro = ready && s.onboardingDone && !s.alarmIntroSeen,
+            now = now,
+            tasks = d.tasks,
+            routines = d.routines,
+            ribbon = ribbon,
+            next = next,
+            day = dayUi(date, d, paused, lastRung, now),
+            pausedUntil = paused,
+            lastRungDay = lastRung,
+            clockAlarm = clockAlarm,
+            showDaysHint = !s.plan.hintDismissed && next != null && d.routines.isNotEmpty() && d.routines.all { it.days.isEmpty() },
             notifyOnExit = s.notifyOnExit,
             exitText = s.exitText,
             alarmMode = s.alarmMode,
             ringing = s.ringing,
+            planPrefs = s.plan,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
     init {
         viewModelScope.launch {
             migration.migrateIfNeeded()
-            startup.value = Startup(ready = true)
+            plan.migrateFromSingleSetupIfNeeded(context.getString(R.string.routine_default_name))
+            startup.value = true
+            alarmSync.sync()
         }
+    }
+
+    private fun dayUi(date: LocalDate, d: Data, paused: LocalDate?, lastRung: LocalDate?, now: LocalDateTime): DayUi {
+        val schedule = AlarmPlanner.day(date, d.routines, d.overrides, d.tasks, paused)
+        val weekly = d.routines.firstOrNull { it.enabled && date.dayOfWeek in it.days }
+        val override = d.overrides[date]
+        val owner = d.routines.firstOrNull { date.dayOfWeek in it.days }
+        val routine = when (override) {
+            is DayPlan.UseRoutine -> d.routines.firstOrNull { it.id == override.routineId }
+            is DayPlan.Custom -> d.routines.firstOrNull { it.id == override.routineId }
+            else -> null
+        } ?: weekly ?: owner
+        val custom = override as? DayPlan.Custom
+        return DayUi(
+            date = date,
+            schedule = schedule,
+            weekly = weekly,
+            override = override,
+            routine = routine,
+            exitTime = custom?.exitTime ?: routine?.exitTime,
+            taskIds = (custom?.taskIds ?: routine?.taskIds.orEmpty()).filter { id -> d.tasks.any { it.id == id } }.toSet(),
+            paused = paused != null && !date.isAfter(paused),
+            rung = (lastRung != null && !date.isAfter(lastRung)) || (schedule.wakeAt != null && !schedule.wakeAt.isAfter(now)),
+        )
     }
 
     /** Answer to the "new in 5.0" card: try the Parakeet alarm or keep the Clock app. */
@@ -115,61 +206,219 @@ class MainViewModel @Inject constructor(
         if (useParakeetAlarm && canScheduleExactAlarms()) switchAlarmMode(AlarmMode.INTERNAL) else settings.setAlarmIntroSeen()
     }
 
-    // ---- exit time & tasks -------------------------------------------------------------------
+    // ---- the selected day (one-time changes) -----------------------------------------------------
 
-    fun setExitTime(time: LocalTime) = viewModelScope.launch { settings.setExitTime(time) }
+    fun selectDate(date: LocalDate) { selectedDate.value = date }
 
-    fun toggleTask(task: Task) = viewModelScope.launch { tasks.setChecked(task.id, !task.checked) }
+    /** Day switch: off = skip (or remove the extra alarm); on = back to its routine, or an extra alarm. */
+    fun setDayOn(on: Boolean) = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        if (on) {
+            when {
+                day.override is DayPlan.Skip && day.weekly != null -> plan.clearDayPlan(day.date)
+                day.weekly != null -> plan.clearDayPlan(day.date)
+                else -> {
+                    val routine = day.routine ?: state.value.next?.routine ?: state.value.routines.firstOrNull()
+                    if (routine == null) { _events.emit(MainEvent.CreateRoutineFor(day.date)); return@launch }
+                    plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
+                }
+            }
+        } else {
+            if (day.weekly != null) plan.setDayPlan(DayPlan.Skip(day.date)) else plan.clearDayPlan(day.date)
+        }
+        afterChange()
+    }
 
-    fun addTask(name: String, minutes: Int) = viewModelScope.launch { tasks.add(name, minutes) }
+    /** Routine for the selected day: only that date, or from now on every same weekday ([always]). */
+    fun setDayRoutine(routineId: Long, always: Boolean) = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        val routine = state.value.routines.firstOrNull { it.id == routineId } ?: return@launch
+        val weekday = day.date.dayOfWeek
+        if (always) {
+            plan.setDays(routine.id, routine.days + weekday)
+            if (!routine.enabled) plan.setEnabled(routine.copy(days = routine.days + weekday), true)
+            plan.clearDayPlan(day.date)
+        } else {
+            if (weekday in routine.days) plan.setDays(routine.id, routine.days - weekday)
+            plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
+        }
+        afterChange()
+    }
 
-    fun updateTask(task: Task) = viewModelScope.launch { tasks.update(task) }
+    fun setDayExit(time: LocalTime) = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        applyDay(day, time, day.taskIds)
+    }
+
+    fun toggleDayTask(task: Task) = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        val ids = if (task.id in day.taskIds) day.taskIds - task.id else day.taskIds + task.id
+        applyDay(day, day.exitTime ?: return@launch, ids)
+    }
+
+    /** Back to the routine values for that date. */
+    fun resetDay() = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        val routine = day.routine
+        if (routine == null || day.weekly?.id == routine.id) plan.clearDayPlan(day.date)
+        else plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
+        afterChange()
+    }
+
+    /** "Save in <routine>": the one-time tweak becomes the routine. */
+    fun saveDayToRoutine() = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        val routine = day.routine ?: return@launch
+        val exit = day.exitTime ?: return@launch
+        plan.saveRoutine(routine.copy(exitTime = exit, taskIds = day.taskIds))
+        if (day.weekly?.id == routine.id) plan.clearDayPlan(day.date) else plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
+        afterChange()
+    }
+
+    private suspend fun applyDay(day: DayUi, exit: LocalTime, taskIds: Set<Long>) {
+        val routine = day.routine
+        val catalog = state.value.tasks.map { it.id }.toSet()
+        if (routine != null && routine.exitTime == exit && routine.taskIds.intersect(catalog) == taskIds.intersect(catalog)) {
+            if (day.weekly?.id == routine.id) plan.clearDayPlan(day.date) else plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
+        } else {
+            plan.setDayPlan(DayPlan.Custom(day.date, routine?.id, exit, taskIds))
+        }
+        afterChange()
+    }
+
+    // ---- routines --------------------------------------------------------------------------------
+
+    /** Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only. */
+    fun saveRoutine(routine: Routine, forDate: LocalDate?) = viewModelScope.launch {
+        val id = plan.saveRoutine(routine)
+        // One-time "use this routine" plans on days it now covers every week are redundant
+        if (routine.enabled) {
+            plan.currentOverrides().values
+                .filter { it is DayPlan.UseRoutine && it.routineId == id && it.date.dayOfWeek in routine.days }
+                .forEach { plan.clearDayPlan(it.date) }
+        }
+        if (forDate != null) {
+            if (forDate.dayOfWeek in routine.days && routine.enabled) plan.clearDayPlan(forDate)
+            else plan.setDayPlan(DayPlan.UseRoutine(forDate, id))
+            selectedDate.value = forDate
+        }
+        afterChange()
+    }
+
+    fun setRoutineEnabled(routine: Routine, enabled: Boolean) = viewModelScope.launch {
+        plan.setEnabled(routine, enabled)
+        afterChange()
+    }
+
+    fun deleteRoutine(routine: Routine) = viewModelScope.launch {
+        plan.deleteRoutine(routine.id)
+        afterChange()
+    }
+
+    suspend fun nextRoutineColor(): Int = plan.nextColor()
+
+    fun dismissDaysHint() = viewModelScope.launch { settings.setHintDismissed() }
+
+    // ---- pause -------------------------------------------------------------------------------------
+
+    fun pauseUntil(date: LocalDate) = viewModelScope.launch {
+        settings.setPausedUntil(date.toEpochDay())
+        afterChange()
+    }
+
+    fun resume() = viewModelScope.launch {
+        settings.setPausedUntil(null)
+        afterChange()
+    }
+
+    // ---- activity catalog ----------------------------------------------------------------------------
+
+    /** New activity: added to the catalog and ticked for the selected day only. */
+    fun addTask(name: String, minutes: Int) = viewModelScope.launch {
+        val id = tasks.add(name, minutes)
+        val day = state.value.day
+        if (day?.exitTime != null && day.rings) applyDay(day, day.exitTime, day.taskIds + id)
+    }
+
+    fun updateTask(task: Task) = viewModelScope.launch { tasks.update(task); afterChange() }
 
     fun removeTask(task: Task) = viewModelScope.launch {
         tasks.delete(task.id)
         _events.emit(MainEvent.TaskRemoved(task))
+        afterChange()
     }
 
-    fun restoreTask(task: Task) = viewModelScope.launch { tasks.restore(task) }
+    fun restoreTask(task: Task) = viewModelScope.launch { tasks.restore(task); afterChange() }
 
-    // ---- alarm ---------------------------------------------------------------------------------
+    /** Adds an activity from the routine editor; returns its id through [onAdded]. */
+    fun addCatalogTask(name: String, minutes: Int, onAdded: (Long) -> Unit) = viewModelScope.launch {
+        onAdded(tasks.add(name, minutes))
+    }
 
-    fun setAlarm() = viewModelScope.launch {
-        val plan = state.value.plan ?: return@launch
-        if (plan.totalMinutes == 0) return@launch
-        // Avoid duplicates: dismiss the alarm we created previously, if any
+    private suspend fun afterChange() {
+        val next = alarmSync.sync()
+        if (settings.current().alarmMode == AlarmMode.INTERNAL) _events.emit(MainEvent.NextChanged(next))
+    }
+
+    // ---- Clock app mode --------------------------------------------------------------------------------
+
+    /** Clock mode: sends the next planned alarm to the Clock app. */
+    fun sendToClock() = viewModelScope.launch {
+        val next = state.value.next ?: return@launch
+        val wake = next.wakeAt ?: return@launch
+        val exit = next.exitAt ?: return@launch
         if (settings.current().activeAlarm != null) alarmScheduler.cancel()
-
-        if (!alarmScheduler.set(plan.wakeAt)) {
+        if (!alarmScheduler.set(wake)) {
             _events.emit(if (settings.current().alarmMode == AlarmMode.INTERNAL) MainEvent.NeedsExactAlarm else MainEvent.NoClockApp)
             return@launch
         }
-        val exitMillis = plan.exitAt.toMillis()
-        settings.setActiveAlarm(ActiveAlarm(plan.wakeAt.toMillis(), exitMillis))
-        if (settings.current().notifyOnExit) exitNotifications.schedule(exitMillis) else exitNotifications.cancel()
-        _events.emit(MainEvent.AlarmSet(plan.wakeAt))
+        settings.setActiveAlarm(ActiveAlarm(wake.toMillis(), exit.toMillis()))
+        if (settings.current().notifyOnExit) exitNotifications.schedule(exit.toMillis()) else exitNotifications.cancel()
+        _events.emit(MainEvent.AlarmSentToClock(wake))
     }
 
-    fun cancelAlarm() = viewModelScope.launch {
+    fun cancelClockAlarm() = viewModelScope.launch {
         alarmScheduler.cancel()
         exitNotifications.cancel()
         settings.setActiveAlarm(null)
         _events.emit(MainEvent.AlarmCancelled)
     }
 
-    // ---- onboarding & settings ----------------------------------------------------------------
+    // ---- onboarding & settings -------------------------------------------------------------------------
 
-    fun completeOnboarding(exitTime: LocalTime, chosen: List<Pair<String, Int>>, notify: Boolean, internalAlarm: Boolean) =
-        viewModelScope.launch {
-            settings.setAlarmMode(if (internalAlarm && canScheduleExactAlarms()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
-            settings.setExitTime(exitTime)
-            if (tasks.count() == 0) chosen.forEach { (name, minutes) -> tasks.add(name, minutes) }
-            settings.setNotifyOnExit(notify)
-            settings.setOnboardingDone()
+    /**
+     * Creates the activities and the first routine. No [days] = "only tomorrow": a one-time plan for the
+     * next occurrence, so nothing rings on days the user never chose.
+     */
+    fun completeOnboarding(
+        exitTime: LocalTime,
+        chosen: List<Pair<String, Int>>,
+        days: Set<DayOfWeek>,
+        routineName: String,
+        notify: Boolean,
+        internalAlarm: Boolean,
+    ) = viewModelScope.launch {
+        settings.setAlarmMode(if (internalAlarm && canScheduleExactAlarms()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
+        settings.setExitTime(exitTime)
+        val ids = if (tasks.count() == 0) chosen.map { (name, minutes) -> tasks.add(name, minutes) }
+        else tasks.tasks.first().filter { it.checked }.map { it.id }
+        val id = plan.saveRoutine(
+            Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids.toSet(), days = days),
+        )
+        if (days.isEmpty()) {
+            val total = chosen.sumOf { it.second }
+            val first = WakeUpCalculator.plan(exitTime, listOf(Task(name = "", minutes = total, checked = true)), LocalDateTime.now(clock))
+            plan.setDayPlan(DayPlan.UseRoutine(first.exitAt.toLocalDate(), id))
         }
+        settings.markPlanMigrated()
+        settings.setNotifyOnExit(notify)
+        settings.setOnboardingDone()
+        alarmSync.sync()
+    }
 
     fun setNotifyOnExit(enabled: Boolean) = viewModelScope.launch {
         settings.setNotifyOnExit(enabled)
+        if (settings.current().alarmMode == AlarmMode.INTERNAL) { alarmSync.sync(); return@launch }
         val alarm = settings.current().activeAlarm
         if (!enabled) exitNotifications.cancel()
         else if (alarm != null) exitNotifications.schedule(alarm.exitAtMillis)
@@ -177,20 +426,29 @@ class MainViewModel @Inject constructor(
 
     fun setExitText(text: String) = viewModelScope.launch { settings.setExitText(text) }
 
+    fun setPreAlarmNotify(enabled: Boolean) = viewModelScope.launch { settings.setPreAlarmNotify(enabled); alarmSync.sync() }
+
+    fun setEveningSummary(enabled: Boolean) = viewModelScope.launch { settings.setEveningSummary(enabled); alarmSync.sync() }
+
+    fun setEveningTime(time: LocalTime) = viewModelScope.launch {
+        settings.setEveningMinute(time.hour * 60 + time.minute); alarmSync.sync()
+    }
+
     fun canScheduleExact(): Boolean = exitNotifications.canScheduleExact()
 
     fun canScheduleExactAlarms(): Boolean = exitNotifications.canScheduleExact()
 
     fun setAlarmMode(mode: AlarmMode) = viewModelScope.launch { switchAlarmMode(mode) }
 
-    /** Switches between Clock app and in-app alarm; an alarm already set is moved to the new mode. */
+    /** Switches between Clock app and in-app alarm. The in-app alarm follows the weekly plan by itself. */
     private suspend fun switchAlarmMode(mode: AlarmMode) {
         val s = settings.current()
-        if (s.alarmMode == mode) { settings.setAlarmMode(mode); return }
-        val active = s.activeAlarm?.takeIf { it.wakeAtMillis > System.currentTimeMillis() }
-        if (active != null) alarmScheduler.cancel()
+        if (s.alarmMode == AlarmMode.CLOCK && mode == AlarmMode.INTERNAL && s.activeAlarm != null) {
+            alarmScheduler.cancel() // remove the Clock app alarm we created
+            settings.setActiveAlarm(null)
+        }
         settings.setAlarmMode(mode)
-        if (active != null && !alarmScheduler.set(active.wakeAtMillis.toLocal())) settings.setActiveAlarm(null)
+        alarmSync.sync()
     }
 
     fun updateRinging(transform: (RingingPrefs) -> RingingPrefs) = viewModelScope.launch { settings.updateRinging(transform) }
@@ -198,9 +456,10 @@ class MainViewModel @Inject constructor(
     /** Rings the in-app alarm in 5 seconds, so settings can be tried without waiting for the morning. */
     fun testAlarm(): Boolean = internalAlarm.setAt(System.currentTimeMillis() + 5_000, test = true)
 
-    /** Called when exact-alarm access may have changed, to re-arm the notification with the right precision. */
+    /** Called when exact-alarm access may have changed, to re-arm the notifications with the right precision. */
     fun refreshExitNotification() = viewModelScope.launch {
         val s = settings.current()
+        if (s.alarmMode == AlarmMode.INTERNAL) { alarmSync.sync(); return@launch }
         val alarm = s.activeAlarm
         if (s.notifyOnExit && alarm != null) exitNotifications.schedule(alarm.exitAtMillis)
     }

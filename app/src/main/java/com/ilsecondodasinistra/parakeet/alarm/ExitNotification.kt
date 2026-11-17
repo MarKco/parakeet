@@ -27,6 +27,7 @@ import javax.inject.Singleton
 object Notifications {
     const val CHANNEL_EXIT = "exit"
     const val CHANNEL_ALARM = "alarm"
+    const val CHANNEL_UPCOMING = "upcoming"
 
     fun createChannels(context: Context) {
         val channel = NotificationChannel(
@@ -44,7 +45,12 @@ object Notifications {
             enableVibration(false)
             setBypassDnd(true)
         }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alarm))
+        val upcoming = NotificationChannel(
+            CHANNEL_UPCOMING,
+            context.getString(R.string.channel_upcoming_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply { description = context.getString(R.string.channel_upcoming_description) }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alarm, upcoming))
     }
 
     fun canPost(context: Context): Boolean =
@@ -125,24 +131,26 @@ class ExitAlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** Re-schedules the exit notification after reboot, clock/time-zone changes or when exact-alarm permission changes. */
+/** Re-arms everything after reboot, clock/time-zone changes or when exact-alarm permission changes. */
 @AndroidEntryPoint
 class RescheduleReceiver : BroadcastReceiver() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scheduler: ExitNotificationScheduler
-    @Inject lateinit var internalAlarm: InternalAlarmScheduler
+    @Inject lateinit var alarmSync: AlarmSync
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 val current = settings.current()
-                val alarm = current.activeAlarm
-                if (current.alarmMode == AlarmMode.INTERNAL && alarm != null && alarm.wakeAtMillis > System.currentTimeMillis()) {
-                    internalAlarm.setAt(alarm.wakeAtMillis)
-                }
-                if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {
-                    scheduler.schedule(alarm.exitAtMillis)
+                if (current.alarmMode == AlarmMode.INTERNAL) {
+                    // Weekly plan: the next occurrence is recomputed from the data, never from a stored moment
+                    alarmSync.sync()
+                } else {
+                    val alarm = current.activeAlarm
+                    if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {
+                        scheduler.schedule(alarm.exitAtMillis)
+                    }
                 }
             } finally {
                 pending.finish()

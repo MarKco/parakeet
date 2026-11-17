@@ -85,6 +85,14 @@ import kotlinx.coroutines.delay
 import com.ilsecondodasinistra.parakeet.ui.ChoiceCard
 import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
+import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
+import com.ilsecondodasinistra.parakeet.ui.dayLabel
+import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
+import com.ilsecondodasinistra.parakeet.ui.main.shortList
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -105,6 +113,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     val timeState = rememberTimePickerState(8, 0, true)
     var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList())) }   // pre-selected suggestions
     var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes.toList())) }
+    var days by rememberSaveable { mutableStateOf(ArrayList<Int>()) }   // empty = only the next morning
     var notify by rememberSaveable { mutableStateOf(true) }
     var internalAlarm by rememberSaveable { mutableStateOf(true) }
     var notifyGranted by rememberSaveable { mutableStateOf(hasNotificationPermission(context)) }
@@ -122,7 +131,15 @@ fun OnboardingScreen(viewModel: MainViewModel) {
         LocalDateTime.now(),
     )
 
-    fun finish() = viewModel.completeOnboarding(exitTime, chosen, notify && notifyGranted, internalAlarm)
+    val daySet = days.map { DayOfWeek.of(it) }.toSet()
+    val weekdaysName = stringResource(R.string.routine_name_weekdays)
+    val weekendName = stringResource(R.string.routine_name_weekend)
+    val defaultName = stringResource(R.string.routine_default_name)
+    fun finish() = viewModel.completeOnboarding(
+        exitTime, chosen, daySet,
+        AlarmPlanner.suggestedName(daySet, weekdaysName, weekendName, defaultName),
+        notify && notifyGranted, internalAlarm,
+    )
 
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
     Column(
@@ -173,6 +190,33 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         }
                     }
                     3 -> {
+                        Title(R.string.onb_when_title)
+                        Text(stringResource(R.string.onb_when_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        val once = stringResource(R.string.onb_when_once, dayLabel(preview.wakeAt, LocalDate.now()))
+                        val workdays = DayOfWeek.entries.take(5).map { it.value }
+                        val weekend = listOf(DayOfWeek.SATURDAY.value, DayOfWeek.SUNDAY.value)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                            FilterChip(selected = days.isEmpty(), onClick = { days = ArrayList() }, label = { Text(once) }, modifier = Modifier.heightIn(min = 40.dp))
+                            FilterChip(selected = days.toSet() == workdays.toSet(), onClick = { days = ArrayList(workdays) }, label = { Text(weekdaysName) }, modifier = Modifier.heightIn(min = 40.dp))
+                            FilterChip(selected = days.toSet() == weekend.toSet(), onClick = { days = ArrayList(weekend) }, label = { Text(weekendName) }, modifier = Modifier.heightIn(min = 40.dp))
+                        }
+                        Spacer(Modifier.size(20.dp))
+                        WeekdayChips(
+                            selected = daySet,
+                            color = ParakeetLime,
+                            onToggle = { d -> days = ArrayList(if (d.value in days) days - d.value else days + d.value) },
+                        )
+                        Spacer(Modifier.size(20.dp))
+                        Text(
+                            if (days.isEmpty()) once else stringResource(R.string.onb_when_weekly, daySet.shortList()),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    4 -> {
                         Title(R.string.onb_alarm_title)
                         Text(stringResource(R.string.onb_alarm_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                         Spacer(Modifier.size(20.dp))
@@ -220,7 +264,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             Spacer(Modifier.size(12.dp))
         }
         if (step > 0) {
-            StepDots(step - 1, 4)
+            StepDots(step - 1, 5)
             Spacer(Modifier.size(12.dp))
         }
         // Navigation row
@@ -232,7 +276,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 else -> {
                     TextButton(onClick = { step -= 1 }) { Text(stringResource(R.string.onb_back)) }
                     Spacer(Modifier.weight(1f))
-                    if (step == 4) {
+                    if (step == 5) {
                         if (!notifyGranted) {
                             TextButton(onClick = { notify = false; finish() }) { Text(stringResource(R.string.onb_no_thanks)) }
                         }

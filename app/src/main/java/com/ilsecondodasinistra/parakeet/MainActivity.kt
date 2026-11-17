@@ -32,6 +32,8 @@ import com.ilsecondodasinistra.parakeet.ui.about.AboutScreen
 import com.ilsecondodasinistra.parakeet.ui.main.MainScreen
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import com.ilsecondodasinistra.parakeet.ui.onboarding.OnboardingScreen
+import com.ilsecondodasinistra.parakeet.ui.routines.RoutineEditorScreen
+import com.ilsecondodasinistra.parakeet.ui.routines.RoutinesScreen
 import com.ilsecondodasinistra.parakeet.ui.settings.SettingsScreen
 import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -59,6 +61,9 @@ class MainActivity : ComponentActivity() {
 @Serializable private data object MainKey : NavKey
 @Serializable private data object SettingsKey : NavKey
 @Serializable private data object AboutKey : NavKey
+@Serializable private data object RoutinesKey : NavKey
+/** [forDay]: epoch day the new routine is created for, or -1. */
+@Serializable private data class RoutineEditorKey(val id: Long, val forDay: Long) : NavKey
 
 private const val NAV_MILLIS = 320
 
@@ -100,6 +105,20 @@ private fun ParakeetRoot(onReady: () -> Unit, viewModel: MainViewModel = hiltVie
                         viewModel = viewModel,
                         onOpenSettings = { backStack.add(SettingsKey) },
                         onOpenAbout = { backStack.add(AboutKey) },
+                        onOpenRoutines = { backStack.add(RoutinesKey) },
+                        onEditRoutine = { id, date -> backStack.add(RoutineEditorKey(id, date?.toEpochDay() ?: -1L)) },
+                    )
+                }
+                entry<RoutinesKey> {
+                    RoutinesScreen(state, viewModel, onBack = onBack, onEdit = { backStack.add(RoutineEditorKey(it, -1L)) })
+                }
+                entry<RoutineEditorKey> { key ->
+                    RoutineEditorScreen(
+                        routineId = key.id,
+                        forDate = key.forDay.takeIf { it >= 0 }?.let(java.time.LocalDate::ofEpochDay),
+                        state = state,
+                        viewModel = viewModel,
+                        onBack = onBack,
                     )
                 }
                 entry<SettingsKey> { SettingsScreen(state, viewModel, onBack = onBack) }

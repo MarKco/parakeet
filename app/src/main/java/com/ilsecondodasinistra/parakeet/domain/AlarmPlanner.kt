@@ -5,6 +5,16 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
+/** Routine palette (ARGB), harmonized with the Parakeet lime and the orange of the lettering. */
+val RoutineColors: List<Int> = listOf(
+    0xFFA9C607.toInt(), // lime
+    0xFFF2A516.toInt(), // amber
+    0xFF4FB3E8.toInt(), // sky
+    0xFFEF6F6C.toInt(), // coral
+    0xFFA58BE8.toInt(), // lavender
+    0xFF2DB8A0.toInt(), // teal
+)
+
 /**
  * A weekly template: exit time + chosen activities, valid on [days].
  * A weekday belongs to at most one routine (enforced when saving).

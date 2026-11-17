@@ -37,6 +37,17 @@ data class RingingPrefs(
     val qrValue: String = "",
 )
 
+/** Weekly-plan state kept outside Room. Dates as epoch days. */
+data class PlanPrefs(
+    val pausedUntil: Long? = null,       // alarms suspended up to this date (inclusive)
+    val lastRungDay: Long? = null,       // date of the last occurrence that rang: never re-armed
+    val armedDay: Long? = null,          // date of the occurrence currently armed
+    val preAlarmNotify: Boolean = true,  // "alarm at 6:45 · Skip" about 2 h before
+    val eveningSummary: Boolean = false, // "tomorrow: alarm 6:45" the evening before
+    val eveningMinute: Int = 21 * 60 + 30,
+    val hintDismissed: Boolean = false,  // "ring on other days too?" hint
+)
+
 data class Settings(
     val exitTime: LocalTime?,           // null until the user chooses one
     val onboardingDone: Boolean,
@@ -46,6 +57,7 @@ data class Settings(
     val alarmMode: AlarmMode,           // CLOCK until the user opts in to the in-app alarm
     val alarmIntroSeen: Boolean,        // the "new in 5.0" card was answered
     val ringing: RingingPrefs,
+    val plan: PlanPrefs = PlanPrefs(),
 )
 
 @Singleton
@@ -69,6 +81,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val mathOps = intPreferencesKey("math_ops")
         val shakeCount = intPreferencesKey("shake_count")
         val qrValue = stringPreferencesKey("qr_value")
+        val pausedUntil = longPreferencesKey("paused_until")
+        val lastRungDay = longPreferencesKey("last_rung_day")
+        val armedDay = longPreferencesKey("armed_day")
+        val preAlarmNotify = booleanPreferencesKey("pre_alarm_notify")
+        val eveningSummary = booleanPreferencesKey("evening_summary")
+        val eveningMinute = intPreferencesKey("evening_minute")
+        val hintDismissed = booleanPreferencesKey("plan_hint_dismissed")
+        val planMigrated = booleanPreferencesKey("plan_migrated")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -94,6 +114,15 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 mathOps = this[Keys.mathOps] ?: 3,
                 shakeCount = this[Keys.shakeCount] ?: 20,
                 qrValue = this[Keys.qrValue].orEmpty(),
+            ),
+            plan = PlanPrefs(
+                pausedUntil = this[Keys.pausedUntil],
+                lastRungDay = this[Keys.lastRungDay],
+                armedDay = this[Keys.armedDay],
+                preAlarmNotify = this[Keys.preAlarmNotify] ?: true,
+                eveningSummary = this[Keys.eveningSummary] ?: false,
+                eveningMinute = this[Keys.eveningMinute] ?: (21 * 60 + 30),
+                hintDismissed = this[Keys.hintDismissed] ?: false,
             ),
         )
     }
@@ -140,4 +169,26 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         it[Keys.shakeCount] = new.shakeCount
         it[Keys.qrValue] = new.qrValue
     }
+
+    suspend fun setPausedUntil(epochDay: Long?) = context.dataStore.edit {
+        if (epochDay == null) it.remove(Keys.pausedUntil) else it[Keys.pausedUntil] = epochDay
+    }
+
+    suspend fun setLastRungDay(epochDay: Long) = context.dataStore.edit { it[Keys.lastRungDay] = epochDay }
+
+    suspend fun setArmedDay(epochDay: Long?) = context.dataStore.edit {
+        if (epochDay == null) it.remove(Keys.armedDay) else it[Keys.armedDay] = epochDay
+    }
+
+    suspend fun setPreAlarmNotify(value: Boolean) = context.dataStore.edit { it[Keys.preAlarmNotify] = value }
+
+    suspend fun setEveningSummary(value: Boolean) = context.dataStore.edit { it[Keys.eveningSummary] = value }
+
+    suspend fun setEveningMinute(value: Int) = context.dataStore.edit { it[Keys.eveningMinute] = value }
+
+    suspend fun setHintDismissed() = context.dataStore.edit { it[Keys.hintDismissed] = true }
+
+    suspend fun isPlanMigrated(): Boolean = context.dataStore.data.first()[Keys.planMigrated] ?: false
+
+    suspend fun markPlanMigrated() = context.dataStore.edit { it[Keys.planMigrated] = true }
 }

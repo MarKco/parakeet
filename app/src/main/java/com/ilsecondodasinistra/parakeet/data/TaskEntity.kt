@@ -50,7 +50,12 @@ interface TaskDao {
     suspend fun delete(id: Long)
 }
 
-@Database(entities = [TaskEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [TaskEntity::class, RoutineEntity::class, RoutineTaskEntity::class, DayPlanEntity::class],
+    version = 2,
+    exportSchema = false,
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
+    abstract fun planDao(): PlanDao
 }

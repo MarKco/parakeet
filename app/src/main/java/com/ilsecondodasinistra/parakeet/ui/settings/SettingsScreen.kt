@@ -173,8 +173,72 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                     }
                 }
             }
+
+            if (state.alarmMode == com.ilsecondodasinistra.parakeet.data.AlarmMode.INTERNAL) RemindersSection(state, viewModel)
         }
         }
+    }
+}
+
+/** Notifications before the alarm: "upcoming · skip" (2 h before) and the evening summary. */
+@Composable
+private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
+    var pickEvening by remember { mutableStateOf(false) }
+    val prefs = state.planPrefs
+    val evening = java.time.LocalTime.of(prefs.eveningMinute / 60, prefs.eveningMinute % 60)
+    Text(
+        stringResource(R.string.settings_reminders),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+    )
+    SettingsCard {
+        SwitchRow(
+            title = stringResource(R.string.pre_alarm_title),
+            description = stringResource(R.string.pre_alarm_desc),
+            checked = prefs.preAlarmNotify,
+            onChange = viewModel::setPreAlarmNotify,
+        )
+    }
+    SettingsCard {
+        Column {
+            SwitchRow(
+                title = stringResource(R.string.evening_title),
+                description = stringResource(R.string.evening_desc, evening.format(java.time.format.DateTimeFormatter.ofPattern("H:mm"))),
+                checked = prefs.eveningSummary,
+                onChange = viewModel::setEveningSummary,
+            )
+            if (prefs.eveningSummary) {
+                TextButton(onClick = { pickEvening = true }, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp).heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.cd_edit))
+                }
+            }
+        }
+    }
+    if (pickEvening) {
+        com.ilsecondodasinistra.parakeet.ui.TimePickerDialog(
+            initial = evening,
+            onConfirm = { viewModel.setEveningTime(it); pickEvening = false },
+            onDismiss = { pickEvening = false },
+        )
+    }
+}
+
+@Composable
+private fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .heightIn(min = 72.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(16.dp))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
