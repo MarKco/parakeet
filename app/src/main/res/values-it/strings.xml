@@ -234,4 +234,12 @@
     <string name="notif_blocked_alarm">Le notifiche sono disattivate: quando la sveglia suona non la vedrai sulla schermata di blocco e potrebbe essere difficile spegnerla.</string>
     <string name="mode_needs_notifications">Per suonare da sola, Parakeet ha bisogno delle notifiche: è così che la sveglia compare quando suona. Fino ad allora usa l\'app Orologio.</string>
     <string name="onb_notify_alarm_needed">La sveglia Parakeet usa le notifiche per comparire quando suona: senza, userai l\'app Orologio.</string>
+    <!-- 5.1 modalità -->
+    <string name="settings_mode_section">Modalità</string>
+    <string name="plan_simple">Semplice</string>
+    <string name="plan_simple_desc">Solo l\'orario di sveglia e le attività della mattina. Imposti una sveglia alla volta.</string>
+    <string name="plan_scheduled">Programmata</string>
+    <string name="plan_scheduled_desc">Routine per i giorni della settimana, modifiche una tantum, e la sveglia si riarma da sola.</string>
+    <string name="onb_mode_title">Come vuoi usare Parakeet?</string>
+    <string name="onb_mode_body">Puoi cambiare quando vuoi dalle Impostazioni, senza perdere nulla.</string>
 </resources>

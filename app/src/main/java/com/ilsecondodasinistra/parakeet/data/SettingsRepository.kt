@@ -23,6 +23,12 @@ data class ActiveAlarm(val wakeAtMillis: Long, val exitAtMillis: Long)
 
 enum class AlarmMode { CLOCK, INTERNAL }
 
+/**
+ * SIMPLE: wake-up time and selectable activities, one alarm at a time (the pre-5.1 screen). The weekly
+ * days of the routines are ignored, not deleted. SCHEDULED: routines per weekday and one-time changes.
+ */
+enum class PlanMode { SIMPLE, SCHEDULED }
+
 /** How the ringing alarm is switched off. */
 enum class Challenge { SLIDE, MATH, SHAKE, QR }
 
@@ -58,6 +64,7 @@ data class Settings(
     val alarmIntroSeen: Boolean,        // the "new in 5.0" card was answered
     val ringing: RingingPrefs,
     val plan: PlanPrefs = PlanPrefs(),
+    val planMode: PlanMode = PlanMode.SIMPLE, // upgraders keep the screen they know
 )
 
 @Singleton
@@ -89,6 +96,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val eveningMinute = intPreferencesKey("evening_minute")
         val hintDismissed = booleanPreferencesKey("plan_hint_dismissed")
         val planMigrated = booleanPreferencesKey("plan_migrated")
+        val planMode = stringPreferencesKey("plan_mode")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -124,6 +132,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 eveningMinute = this[Keys.eveningMinute] ?: (21 * 60 + 30),
                 hintDismissed = this[Keys.hintDismissed] ?: false,
             ),
+            planMode = this[Keys.planMode]?.let { runCatching { PlanMode.valueOf(it) }.getOrNull() } ?: PlanMode.SIMPLE,
         )
     }
 
@@ -187,6 +196,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setEveningMinute(value: Int) = context.dataStore.edit { it[Keys.eveningMinute] = value }
 
     suspend fun setHintDismissed() = context.dataStore.edit { it[Keys.hintDismissed] = true }
+
+    suspend fun setPlanMode(mode: PlanMode) = context.dataStore.edit { it[Keys.planMode] = mode.name }
 
     suspend fun isPlanMigrated(): Boolean = context.dataStore.data.first()[Keys.planMigrated] ?: false
 

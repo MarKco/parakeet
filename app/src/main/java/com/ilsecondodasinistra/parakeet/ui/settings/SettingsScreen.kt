@@ -92,6 +92,7 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
             Modifier.widthIn(max = 640.dp).padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            PlanModeSection(state, viewModel)
             AlarmSection(state, viewModel)
 
             // Notification switch: the whole row toggles
@@ -178,6 +179,29 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
         }
         }
     }
+}
+
+/** Simple (wake-up time + activities, one alarm at a time) or scheduled (weekday routines). Always switchable. */
+@Composable
+private fun PlanModeSection(state: MainUiState, viewModel: MainViewModel) {
+    Text(
+        stringResource(R.string.settings_mode_section),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+    )
+    com.ilsecondodasinistra.parakeet.ui.ChoiceCard(
+        selected = state.planMode == com.ilsecondodasinistra.parakeet.data.PlanMode.SIMPLE,
+        title = stringResource(R.string.plan_simple),
+        description = stringResource(R.string.plan_simple_desc),
+        onClick = { viewModel.setPlanMode(com.ilsecondodasinistra.parakeet.data.PlanMode.SIMPLE) },
+    )
+    com.ilsecondodasinistra.parakeet.ui.ChoiceCard(
+        selected = state.planMode == com.ilsecondodasinistra.parakeet.data.PlanMode.SCHEDULED,
+        title = stringResource(R.string.plan_scheduled),
+        description = stringResource(R.string.plan_scheduled_desc),
+        onClick = { viewModel.setPlanMode(com.ilsecondodasinistra.parakeet.data.PlanMode.SCHEDULED) },
+    )
 }
 
 /** Notifications before the alarm: "upcoming · skip" (2 h before) and the evening summary. */

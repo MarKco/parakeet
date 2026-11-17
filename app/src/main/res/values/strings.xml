@@ -248,4 +248,12 @@
     <string name="notif_blocked_alarm">Notifications are off: when the alarm rings you won\'t see it on the lock screen and it may be hard to stop.</string>
     <string name="mode_needs_notifications">To ring by itself, Parakeet needs notifications: that\'s how the alarm appears when it rings. Until then it uses the Clock app.</string>
     <string name="onb_notify_alarm_needed">The Parakeet alarm uses notifications to appear when it rings: without them you\'ll use the Clock app.</string>
+    <!-- 5.1 modes -->
+    <string name="settings_mode_section">Mode</string>
+    <string name="plan_simple">Simple</string>
+    <string name="plan_simple_desc">Just the wake-up time and your morning activities. You set one alarm at a time.</string>
+    <string name="plan_scheduled">Scheduled</string>
+    <string name="plan_scheduled_desc">Routines for each weekday, one-time changes, and the alarm re-arms by itself.</string>
+    <string name="onb_mode_title">How do you want to use Parakeet?</string>
+    <string name="onb_mode_body">You can switch any time in Settings, without losing anything.</string>
 </resources>

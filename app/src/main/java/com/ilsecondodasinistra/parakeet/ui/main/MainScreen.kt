@@ -21,6 +21,11 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetDarker
+import com.ilsecondodasinistra.parakeet.ui.theme.OverlineStyle
+import com.ilsecondodasinistra.parakeet.ui.dayLabel
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -111,6 +116,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
+import com.ilsecondodasinistra.parakeet.data.PlanMode
 import com.ilsecondodasinistra.parakeet.domain.DaySchedule
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.ui.AlarmIntroDialog
@@ -165,6 +171,7 @@ fun MainScreen(
     // Two panes only when there is room side by side; tall tablets keep one centred column
     val wide = config.screenWidthDp >= 720 && config.screenWidthDp > config.screenHeightDp
     val day = state.day
+    val simple = state.planMode == PlanMode.SIMPLE
 
     // The in-app alarm needs notifications: without them it rings but cannot be stopped from the lock screen
     var notificationsOn by remember { mutableStateOf(Notifications.canPost(context)) }
@@ -176,6 +183,13 @@ fun MainScreen(
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
             )
         }
+    }
+
+    val requestNotifications: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= 33) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+        )
     }
 
     // One-shot events -> snackbars (+ icon animation when the alarm moves)
@@ -219,8 +233,10 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onOpenRoutines) {
-                        Icon(Icons.Outlined.EventRepeat, contentDescription = stringResource(R.string.cd_routines))
+                    if (!simple) {
+                        IconButton(onClick = onOpenRoutines) {
+                            Icon(Icons.Outlined.EventRepeat, contentDescription = stringResource(R.string.cd_routines))
+                        }
                     }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.cd_settings))
@@ -230,7 +246,7 @@ fun MainScreen(
                             Icon(Icons.Outlined.MoreVert, contentDescription = null)
                         }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            if (state.alarmMode == AlarmMode.INTERNAL) {
+                            if (state.alarmMode == AlarmMode.INTERNAL && !simple) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.menu_pause)) },
                                     leadingIcon = { Icon(Icons.Outlined.PauseCircle, contentDescription = null) },
@@ -254,8 +270,49 @@ fun MainScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        bottomBar = { if (!wide && state.alarmMode == AlarmMode.CLOCK) BottomCta(state, haze, onSend = viewModel::sendToClock) },
+        bottomBar = {
+            if (!wide && (simple || state.alarmMode == AlarmMode.CLOCK)) {
+                BottomCta(haze) {
+                    if (simple) SetAlarmButton(state, viewModel::setSimpleAlarm) else SendToClockButton(state, viewModel::sendToClock)
+                }
+            }
+        },
     ) { padding ->
+        // The activity list, shared by both modes: [checkedIds] are the ticked activities
+        fun LazyListScope.taskItems(checkedIds: Set<Long>, onToggle: (Task) -> Unit) {
+        item(key = "section") { SectionHeader(selected = checkedIds.size, total = state.tasks.size) }
+        if (state.tasks.isEmpty()) {
+            item(key = "empty") {
+                Text(
+                    stringResource(R.string.tasks_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 8.dp),
+                )
+            }
+        }
+        items(state.tasks, key = { it.id }) { task ->
+            SwipeableTaskRow(
+                task = task.copy(checked = task.id in checkedIds),
+                onToggle = onToggle,
+                onEdit = { editingTaskId = it.id },
+                onRemove = viewModel::removeTask,
+                modifier = Modifier.animateItem(),
+            )
+        }
+        item(key = "add") {
+            OutlinedButton(
+                onClick = { showAddDialog = true },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 56.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_task), style = MaterialTheme.typography.titleSmall)
+            }
+        }
+        }
         val overview: @Composable () -> Unit = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 NextAlarmPanel(state, onResume = viewModel::resume)
@@ -273,14 +330,21 @@ fun MainScreen(
                     DaysHint(onChoose = { if (r != null) onEditRoutine(r.id, null) else onOpenRoutines() }, onDismiss = viewModel::dismissDaysHint)
                 }
                 state.clockAlarm?.let { ClockStatusCard(it, viewModel::cancelClockAlarm) }
-                if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) {
-                    NotificationsWarning(onAllow = {
-                        if (Build.VERSION.SDK_INT >= 33) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        else context.startActivity(
-                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                        )
-                    })
+                if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) NotificationsWarning(onAllow = requestNotifications)
+            }
+        }
+        // Simple mode (the pre-5.1 screen): wake-up time, exit time, what you do; the alarm status below
+        val simpleOverview: @Composable () -> Unit = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SimpleHeader(state, onEditExit = { showTimePicker = true })
+                val armed = if (state.alarmMode == AlarmMode.INTERNAL) state.next else null
+                val armedWake = armed?.wakeAt
+                val armedExit = armed?.exitAt
+                if (armedWake != null && armedExit != null) {
+                    SimpleAlarmStatus(armedWake, armedExit, state.now, onCancel = viewModel::cancelSimpleAlarm)
                 }
+                state.clockAlarm?.let { ClockStatusCard(it, viewModel::cancelClockAlarm) }
+                if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) NotificationsWarning(onAllow = requestNotifications)
             }
         }
         val dayItems: LazyListScope.() -> Unit = {
@@ -317,41 +381,16 @@ fun MainScreen(
                             ModifiedBanner(day, onReset = viewModel::resetDay, onSave = viewModel::saveDayToRoutine)
                         }
                     }
-                    item(key = "section") { SectionHeader(selected = day.taskIds.size, total = state.tasks.size) }
-                    if (state.tasks.isEmpty()) {
-                        item(key = "empty") {
-                            Text(
-                                stringResource(R.string.tasks_empty),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 8.dp),
-                            )
-                        }
-                    }
-                    items(state.tasks, key = { it.id }) { task ->
-                        SwipeableTaskRow(
-                            task = task.copy(checked = task.id in day.taskIds),
-                            onToggle = { viewModel.toggleDayTask(it) },
-                            onEdit = { editingTaskId = it.id },
-                            onRemove = viewModel::removeTask,
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                    item(key = "add") {
-                        OutlinedButton(
-                            onClick = { showAddDialog = true },
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                        ) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.add_task), style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
+                    taskItems(day.taskIds) { viewModel.toggleDayTask(it) }
                 }
             }
         }
+
+        val simpleItems: LazyListScope.() -> Unit = {
+            taskItems(state.simpleTaskIds) { viewModel.toggleSimpleTask(it); iconTrigger++ }
+        }
+        val overviewContent = if (simple) simpleOverview else overview
+        val listContent = if (simple) simpleItems else dayItems
 
         if (wide) {
             // Tablet / landscape: display and ribbon on the left, the selected day on the right
@@ -367,14 +406,15 @@ fun MainScreen(
                         .padding(start = ScreenPadding, top = 4.dp, bottom = padding.calculateBottomPadding() + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    overview()
-                    if (state.alarmMode == AlarmMode.CLOCK) SendToClockButton(state, viewModel::sendToClock)
+                    overviewContent()
+                    if (simple) SetAlarmButton(state, viewModel::setSimpleAlarm)
+                    else if (state.alarmMode == AlarmMode.CLOCK) SendToClockButton(state, viewModel::sendToClock)
                 }
                 LazyColumn(
                     modifier = Modifier.weight(0.54f).fillMaxHeight(),
                     contentPadding = PaddingValues(start = 8.dp, end = ScreenPadding, top = 4.dp, bottom = padding.calculateBottomPadding() + 24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    content = dayItems,
+                    content = listContent,
                 )
             }
         } else {
@@ -389,14 +429,21 @@ fun MainScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item(key = "overview") { overview() }
-                    dayItems()
+                    item(key = "overview") { overviewContent() }
+                    listContent()
                 }
             }
         }
     }
 
-    if (showTimePicker && day?.exitTime != null) {
+    if (showTimePicker && simple) {
+        TimePickerDialog(
+            initial = state.simpleExit ?: LocalTime.of(8, 0),
+            onConfirm = { viewModel.setSimpleExit(it); showTimePicker = false },
+            onDismiss = { showTimePicker = false },
+        )
+    }
+    if (showTimePicker && !simple && day?.exitTime != null) {
         TimePickerDialog(
             initial = day.exitTime,
             onConfirm = { viewModel.setDayExit(it); showTimePicker = false },
@@ -660,13 +707,99 @@ private fun TaskRow(task: Task, shape: RoundedCornerShape, onToggle: (Task) -> U
 // ---- Bottom CTA (Clock app mode only) ----------------------------------------------------------
 
 @Composable
-private fun BottomCta(state: MainUiState, haze: HazeState, onSend: () -> Unit) {
+private fun BottomCta(haze: HazeState, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().glass(haze, tintAlpha = 0.3f, blur = 16.dp)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
         Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp)) {
-                SendToClockButton(state, onSend)
+                content()
             }
+        }
+    }
+}
+
+/** Simple mode: arms the next wake-up (one alarm at a time). */
+@Composable
+private fun SetAlarmButton(state: MainUiState, onSet: () -> Unit) {
+    val plan = state.simplePlan
+    val enabled = plan != null && plan.totalMinutes > 0
+    Button(
+        onClick = onSet,
+        enabled = enabled,
+        shape = MaterialTheme.shapes.large,
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+    ) {
+        Icon(Icons.Filled.Alarm, contentDescription = null, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = if (enabled) stringResource(R.string.set_alarm_cta, plan!!.wakeAt.lcd()) else stringResource(R.string.select_something),
+            style = MaterialTheme.typography.titleMedium,
+        )
+    }
+}
+
+/** Simple mode header: the radio-clock display with the wake-up time, then exit time and preparation. */
+@Composable
+private fun SimpleHeader(state: MainUiState, onEditExit: () -> Unit) {
+    val plan = state.simplePlan
+    val dark = isSystemInDarkTheme()
+    Column(Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.extraLarge)
+                .background(if (dark) Color(0xFF080A06) else ParakeetDarker)
+                .border(1.dp, ParakeetLime.copy(alpha = if (dark) 0.5f else 0f), MaterialTheme.shapes.extraLarge)
+                .padding(top = 20.dp, bottom = 22.dp)
+                .semantics(mergeDescendants = true) {},
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(stringResource(R.string.wake_up_label).uppercase(), style = OverlineStyle, color = ParakeetLime.copy(alpha = 0.9f))
+            LcdText(text = plan?.wakeAt?.lcd() ?: "--:--", size = 96.sp, color = ParakeetLime, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+            Text(
+                plan?.let { dayLabel(it.wakeAt, LocalDate.now()) } ?: stringResource(R.string.exit_not_set),
+                style = MaterialTheme.typography.titleMedium,
+                color = ParakeetLime,
+            )
+        }
+        Spacer(Modifier.size(8.dp))
+        HeaderRow(
+            icon = Icons.Outlined.DirectionsWalk,
+            label = stringResource(R.string.exit_at),
+            onClick = onEditExit,
+            onClickLabel = stringResource(R.string.cd_set_exit),
+            value = {
+                if (state.simpleExit != null) LcdText(state.simpleExit.lcd(), 34.sp, color = MaterialTheme.colorScheme.onSurface)
+                else Text(stringResource(R.string.exit_not_set), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            },
+            trailing = { Icon(Icons.Filled.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp)) },
+        )
+        HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HeaderRow(
+            icon = Icons.Outlined.HourglassBottom,
+            label = stringResource(R.string.prep_label),
+            value = { Text(formatDuration(plan?.totalMinutes ?: 0), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+        )
+    }
+}
+
+/** Simple mode: when the alarm is armed, always say when it rings and how long from now. */
+@Composable
+private fun SimpleAlarmStatus(wakeAt: LocalDateTime, exitAt: LocalDateTime, now: LocalDateTime, onCancel: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.heightIn(min = 64.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Alarm, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                stringResource(R.string.alarm_status, wakeAt.lcd(), exitAt.lcd()) + " · " + countdown(now, wakeAt),
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.alarm_cancel)) }
         }
     }
 }

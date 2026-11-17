@@ -12,6 +12,7 @@ import com.ilsecondodasinistra.parakeet.alarm.Notifications
 import com.ilsecondodasinistra.parakeet.data.ActiveAlarm
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.LegacyMigration
+import com.ilsecondodasinistra.parakeet.data.PlanMode
 import com.ilsecondodasinistra.parakeet.data.PlanPrefs
 import com.ilsecondodasinistra.parakeet.data.PlanRepository
 import com.ilsecondodasinistra.parakeet.data.RingingPrefs
@@ -24,6 +25,7 @@ import com.ilsecondodasinistra.parakeet.domain.DaySchedule
 import com.ilsecondodasinistra.parakeet.domain.Routine
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.domain.WakeUpCalculator
+import com.ilsecondodasinistra.parakeet.domain.WakeUpPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -84,6 +86,11 @@ data class MainUiState(
     val alarmMode: AlarmMode = AlarmMode.CLOCK,
     val ringing: RingingPrefs = RingingPrefs(),
     val planPrefs: PlanPrefs = PlanPrefs(),
+    val planMode: PlanMode = PlanMode.SIMPLE,
+    // Simple mode: the first routine is "the" setup; the plan is what the "Set alarm" button would arm
+    val simpleExit: LocalTime? = null,
+    val simpleTaskIds: Set<Long> = emptySet(),
+    val simplePlan: WakeUpPlan? = null,
 )
 
 sealed interface MainEvent {
@@ -141,7 +148,18 @@ class MainViewModel @Inject constructor(
         val today = now.toLocalDate()
         val paused = s.plan.pausedUntil?.let(LocalDate::ofEpochDay)?.takeIf { !it.isBefore(today) }
         val lastRung = s.plan.lastRungDay?.let(LocalDate::ofEpochDay)
-        val next = AlarmPlanner.next(now, d.routines, d.overrides, d.tasks, paused, lastRung)
+        val simple = s.planMode == PlanMode.SIMPLE
+        val next = AlarmPlanner.next(
+            now,
+            if (simple) d.routines.map { it.copy(days = emptySet()) } else d.routines,
+            d.overrides, d.tasks,
+            if (simple) null else paused,
+            if (simple) null else lastRung,
+        )
+        val simpleRoutine = d.routines.firstOrNull()
+        val simpleIds = simpleRoutine?.taskIds.orEmpty()
+        val simpleExit = simpleRoutine?.exitTime ?: s.exitTime
+        val simplePlan = simpleExit?.let { WakeUpCalculator.plan(it, d.tasks.map { t -> t.copy(checked = t.id in simpleIds) }, now) }
         val ribbon = AlarmPlanner.range(today, RIBBON_DAYS, d.routines, d.overrides, d.tasks, paused)
         val date = selected?.takeIf { !it.isBefore(today) } ?: next?.date ?: today.plusDays(1)
         val clockAlarm = s.activeAlarm
@@ -160,12 +178,16 @@ class MainViewModel @Inject constructor(
             pausedUntil = paused,
             lastRungDay = lastRung,
             clockAlarm = clockAlarm,
-            showDaysHint = !s.plan.hintDismissed && next != null && d.routines.isNotEmpty() && d.routines.all { it.days.isEmpty() },
+            showDaysHint = s.planMode == PlanMode.SCHEDULED && !s.plan.hintDismissed && next != null && d.routines.isNotEmpty() && d.routines.all { it.days.isEmpty() },
             notifyOnExit = s.notifyOnExit,
             exitText = s.exitText,
             alarmMode = s.alarmMode,
             ringing = s.ringing,
             planPrefs = s.plan,
+            planMode = s.planMode,
+            simpleExit = simpleExit,
+            simpleTaskIds = simpleIds.filter { id -> d.tasks.any { it.id == id } }.toSet(),
+            simplePlan = simplePlan,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
@@ -291,6 +313,65 @@ class MainViewModel @Inject constructor(
         afterChange()
     }
 
+    // ---- simple mode ---------------------------------------------------------------------------------
+
+    fun setPlanMode(mode: PlanMode) = viewModelScope.launch {
+        settings.setPlanMode(mode)
+        alarmSync.sync() // simple mode ignores the weekly days, scheduled mode brings them back
+    }
+
+    /** The routine that holds the simple-mode setup (the first one); created when there is none. */
+    private suspend fun simpleRoutine(): Routine {
+        plan.currentRoutines().firstOrNull()?.let { return it }
+        val id = plan.saveRoutine(
+            Routine(
+                name = context.getString(R.string.routine_default_name), color = plan.nextColor(),
+                exitTime = settings.current().exitTime ?: LocalTime.of(8, 0), taskIds = emptySet(),
+            ),
+        )
+        return plan.currentRoutines().first { it.id == id }
+    }
+
+    fun toggleSimpleTask(task: Task) = viewModelScope.launch {
+        val r = simpleRoutine()
+        plan.saveRoutine(r.copy(taskIds = if (task.id in r.taskIds) r.taskIds - task.id else r.taskIds + task.id))
+        alarmSync.sync()
+    }
+
+    fun setSimpleExit(time: LocalTime) = viewModelScope.launch {
+        val r = simpleRoutine()
+        plan.saveRoutine(r.copy(exitTime = time))
+        settings.setExitTime(time)
+        alarmSync.sync()
+    }
+
+    /** "Set alarm": arms the next wake-up once, replacing any other one-time alarm (one alarm at a time). */
+    fun setSimpleAlarm() = viewModelScope.launch {
+        val sp = state.value.simplePlan ?: return@launch
+        if (sp.totalMinutes == 0) return@launch
+        if (settings.current().alarmMode == AlarmMode.CLOCK) {
+            if (settings.current().activeAlarm != null) alarmScheduler.cancel()
+            if (!alarmScheduler.set(sp.wakeAt)) { _events.emit(MainEvent.NoClockApp); return@launch }
+            settings.setActiveAlarm(ActiveAlarm(sp.wakeAt.toMillis(), sp.exitAt.toMillis()))
+            if (settings.current().notifyOnExit) exitNotifications.schedule(sp.exitAt.toMillis()) else exitNotifications.cancel()
+            _events.emit(MainEvent.AlarmSentToClock(sp.wakeAt))
+            return@launch
+        }
+        if (!canUseInternalAlarm()) { _events.emit(MainEvent.NeedsExactAlarm); return@launch }
+        val routine = simpleRoutine()
+        val date = sp.exitAt.toLocalDate()
+        plan.currentOverrides().values.filter { it.date != date && it !is DayPlan.Skip }.forEach { plan.clearDayPlan(it.date) }
+        plan.setDayPlan(DayPlan.UseRoutine(date, routine.id))
+        _events.emit(MainEvent.NextChanged(alarmSync.sync()))
+    }
+
+    fun cancelSimpleAlarm() = viewModelScope.launch {
+        val next = state.value.next ?: return@launch
+        plan.clearDayPlan(next.date)
+        alarmSync.sync()
+        _events.emit(MainEvent.AlarmCancelled)
+    }
+
     // ---- routines --------------------------------------------------------------------------------
 
     /** Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only. */
@@ -341,6 +422,12 @@ class MainViewModel @Inject constructor(
     /** New activity: added to the catalog and ticked for the selected day only. */
     fun addTask(name: String, minutes: Int) = viewModelScope.launch {
         val id = tasks.add(name, minutes)
+        if (state.value.planMode == PlanMode.SIMPLE) {
+            val r = simpleRoutine()
+            plan.saveRoutine(r.copy(taskIds = r.taskIds + id))
+            alarmSync.sync()
+            return@launch
+        }
         val day = state.value.day
         if (day?.exitTime != null && day.rings) applyDay(day, day.exitTime, day.taskIds + id)
     }
@@ -398,6 +485,7 @@ class MainViewModel @Inject constructor(
     fun completeOnboarding(
         exitTime: LocalTime,
         chosen: List<Pair<String, Int>>,
+        scheduled: Boolean,
         days: Set<DayOfWeek>,
         routineName: String,
         notify: Boolean,
@@ -410,7 +498,9 @@ class MainViewModel @Inject constructor(
         val id = plan.saveRoutine(
             Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids.toSet(), days = days),
         )
-        if (days.isEmpty()) {
+        settings.setPlanMode(if (scheduled) PlanMode.SCHEDULED else PlanMode.SIMPLE)
+        // Simple mode sets no alarm by itself: the user presses "Set alarm", as before
+        if (scheduled && days.isEmpty()) {
             val total = chosen.sumOf { it.second }
             val first = WakeUpCalculator.plan(exitTime, listOf(Task(name = "", minutes = total, checked = true)), LocalDateTime.now(clock))
             plan.setDayPlan(DayPlan.UseRoutine(first.exitAt.toLocalDate(), id))

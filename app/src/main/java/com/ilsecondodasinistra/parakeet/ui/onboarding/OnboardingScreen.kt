@@ -59,6 +59,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -113,6 +114,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     val timeState = rememberTimePickerState(8, 0, true)
     var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList())) }   // pre-selected suggestions
     var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes.toList())) }
+    var scheduled by rememberSaveable { mutableStateOf(false) }          // simple mode by default
     var days by rememberSaveable { mutableStateOf(ArrayList<Int>()) }   // empty = only the next morning
     var notify by rememberSaveable { mutableStateOf(true) }
     var internalAlarm by rememberSaveable { mutableStateOf(true) }
@@ -131,13 +133,16 @@ fun OnboardingScreen(viewModel: MainViewModel) {
         LocalDateTime.now(),
     )
 
+    // The "When?" step exists only in scheduled mode
+    val steps = remember(scheduled) { Step.entries.filter { it != Step.WHEN || scheduled } }
     val daySet = days.map { DayOfWeek.of(it) }.toSet()
+    val usedDays = if (scheduled) daySet else emptySet()
     val weekdaysName = stringResource(R.string.routine_name_weekdays)
     val weekendName = stringResource(R.string.routine_name_weekend)
     val defaultName = stringResource(R.string.routine_default_name)
     fun finish() = viewModel.completeOnboarding(
-        exitTime, chosen, daySet,
-        AlarmPlanner.suggestedName(daySet, weekdaysName, weekendName, defaultName),
+        exitTime, chosen, scheduled, usedDays,
+        AlarmPlanner.suggestedName(usedDays, weekdaysName, weekendName, defaultName),
         notify && notifyGranted,
         internalAlarm && notifyGranted, // the in-app alarm needs notifications to appear when it rings
     )
@@ -153,8 +158,8 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = if (current == 0) Arrangement.Center else Arrangement.Top,
             ) {
-                when (current) {
-                    0 -> {
+                when (steps[current]) {
+                    Step.WELCOME -> {
                         AnimatedParakeetIcon(trigger = welcomeBounce, modifier = Modifier.size(140.dp))
                         Spacer(Modifier.size(24.dp))
                         Text(
@@ -166,11 +171,30 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         Spacer(Modifier.size(12.dp))
                         Text(stringResource(R.string.onb_welcome_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                     }
-                    1 -> {
+                    Step.MODE -> {
+                        Title(R.string.onb_mode_title)
+                        Text(stringResource(R.string.onb_mode_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ChoiceCard(
+                                selected = !scheduled,
+                                title = stringResource(R.string.plan_simple),
+                                description = stringResource(R.string.plan_simple_desc),
+                                onClick = { scheduled = false },
+                            )
+                            ChoiceCard(
+                                selected = scheduled,
+                                title = stringResource(R.string.plan_scheduled),
+                                description = stringResource(R.string.plan_scheduled_desc),
+                                onClick = { scheduled = true },
+                            )
+                        }
+                    }
+                    Step.EXIT -> {
                         Title(R.string.onb_exit_title)
                         TimePicker(state = timeState)
                     }
-                    2 -> {
+                    Step.TASKS -> {
                         Title(R.string.onb_tasks_title)
                         Text(stringResource(R.string.onb_tasks_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.size(8.dp))
@@ -190,7 +214,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         }
                         }
                     }
-                    3 -> {
+                    Step.WHEN -> {
                         Title(R.string.onb_when_title)
                         Text(stringResource(R.string.onb_when_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                         Spacer(Modifier.size(20.dp))
@@ -217,7 +241,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                             textAlign = TextAlign.Center,
                         )
                     }
-                    4 -> {
+                    Step.ALARM -> {
                         Title(R.string.onb_alarm_title)
                         Text(stringResource(R.string.onb_alarm_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                         Spacer(Modifier.size(20.dp))
@@ -236,7 +260,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                             )
                         }
                     }
-                    else -> {
+                    Step.NOTIFY -> {
                         Title(R.string.onb_notify_title)
                         Text(stringResource(R.string.onb_notify_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                         if (internalAlarm && !notifyGranted) {
@@ -262,7 +286,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             }
         }
 
-        if (step == 2) {
+        if (steps[step] == Step.TASKS) {
             // Live preview stays visible while the list scrolls
             Column(
                 Modifier.fillMaxWidth().padding(top = 8.dp).clip(MaterialTheme.shapes.extraLarge).background(ParakeetDarker).padding(vertical = 12.dp),
@@ -274,7 +298,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             Spacer(Modifier.size(12.dp))
         }
         if (step > 0) {
-            StepDots(step - 1, 5)
+            StepDots(step - 1, steps.size - 1)
             Spacer(Modifier.size(12.dp))
         }
         // Navigation row
@@ -286,7 +310,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 else -> {
                     TextButton(onClick = { step -= 1 }) { Text(stringResource(R.string.onb_back)) }
                     Spacer(Modifier.weight(1f))
-                    if (step == 5) {
+                    if (step == steps.lastIndex) {
                         if (!notifyGranted) {
                             TextButton(onClick = { notify = false; finish() }) { Text(stringResource(R.string.onb_no_thanks)) }
                         }
@@ -300,6 +324,9 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     }
     }
 }
+
+/** Onboarding pages in order; WHEN (weekdays) only exists in scheduled mode. */
+private enum class Step { WELCOME, MODE, EXIT, TASKS, WHEN, ALARM, NOTIFY }
 
 @Composable
 private fun Title(res: Int) {

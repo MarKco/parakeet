@@ -10,6 +10,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.ilsecondodasinistra.parakeet.MainActivity
 import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
+import com.ilsecondodasinistra.parakeet.data.PlanMode
 import com.ilsecondodasinistra.parakeet.data.PlanRepository
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
 import com.ilsecondodasinistra.parakeet.data.TaskRepository
@@ -64,7 +65,7 @@ class AlarmSync @Inject constructor(
     fun start() {
         combine(
             plan.routines, plan.overrides, tasks.tasks,
-            settings.settings.map { listOf(it.alarmMode, it.notifyOnExit, it.plan) }.distinctUntilChanged(),
+            settings.settings.map { listOf(it.alarmMode, it.notifyOnExit, it.plan, it.planMode) }.distinctUntilChanged(),
         ) { a, b, c, d -> listOf(a, b, c, d) }
             .debounce(250)
             .onEach { sync() }
@@ -74,11 +75,18 @@ class AlarmSync @Inject constructor(
     /** What would ring next, without arming anything. */
     suspend fun next(now: LocalDateTime = LocalDateTime.now()): DaySchedule? {
         val s = settings.current()
+        val simple = s.planMode == PlanMode.SIMPLE
+        // Simple mode: only one-time alarms; weekly days, pause and the "already rang" guard do not apply
         return AlarmPlanner.next(
-            now, plan.currentRoutines(), plan.currentOverrides(), tasks.tasks.first(),
-            s.plan.pausedUntil?.let(LocalDate::ofEpochDay), s.plan.lastRungDay?.let(LocalDate::ofEpochDay),
+            now, routinesFor(simple), plan.currentOverrides(), tasks.tasks.first(),
+            if (simple) null else s.plan.pausedUntil?.let(LocalDate::ofEpochDay),
+            if (simple) null else s.plan.lastRungDay?.let(LocalDate::ofEpochDay),
         )
     }
+
+    /** Routines as the plan sees them: in simple mode without their weekdays (kept in the database). */
+    private suspend fun routinesFor(simple: Boolean) =
+        plan.currentRoutines().let { list -> if (simple) list.map { it.copy(days = emptySet()) } else list }
 
     suspend fun sync(): DaySchedule? = mutex.withLock {
         // An update from 5.0 may first run here (boot, time change): convert its setup before computing
@@ -101,7 +109,7 @@ class AlarmSync @Inject constructor(
 
         // Exit notification: today's exit (alarm already rung) comes before the next occurrence's exit
         val rungExit = s.plan.lastRungDay?.let { day ->
-            AlarmPlanner.day(LocalDate.ofEpochDay(day), plan.currentRoutines(), plan.currentOverrides(), tasks.tasks.first()).exitAt
+            AlarmPlanner.day(LocalDate.ofEpochDay(day), routinesFor(s.planMode == PlanMode.SIMPLE), plan.currentOverrides(), tasks.tasks.first()).exitAt
         }
         val exit = listOfNotNull(rungExit, next?.exitAt).map { it.toMillis() }.filter { it > System.currentTimeMillis() }.minOrNull()
         if (s.notifyOnExit && exit != null) exitNotifications.schedule(exit) else exitNotifications.cancel()
