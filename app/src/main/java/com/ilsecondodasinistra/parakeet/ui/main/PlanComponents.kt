@@ -120,21 +120,34 @@ fun Set<DayOfWeek>.shortList(): String =
 
 // ---- the radio-clock display: next alarm + countdown ------------------------------------------------
 
+/**
+ * Gap between the LCD digits and the line under them. The digital-7 line box has more room above the ink than
+ * below it, so the visible gaps (measured on screen: label→digits 12 dp, digits→date 12 dp) need this extra.
+ */
+val LcdToCaption = 7.dp
+
+/** The dark radio-clock display shared by both modes: one container, one vertical rhythm (20 dp above, 17 dp below). */
 @Composable
-fun NextAlarmPanel(state: MainUiState, onResume: () -> Unit, modifier: Modifier = Modifier) {
+fun LcdPanel(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     val dark = isSystemInDarkTheme()
-    val next = state.next
-    val paused = state.pausedUntil
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.extraLarge)
             .background(if (dark) Color(0xFF080A06) else ParakeetDarker)
             .border(1.dp, ParakeetLime.copy(alpha = if (dark) 0.5f else 0f), MaterialTheme.shapes.extraLarge)
-            .padding(top = 18.dp, bottom = 18.dp, start = 16.dp, end = 16.dp)
+            .padding(top = 20.dp, bottom = 17.dp, start = 16.dp, end = 16.dp)
             .semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+        content = content,
+    )
+}
+
+@Composable
+fun NextAlarmPanel(state: MainUiState, onResume: () -> Unit, modifier: Modifier = Modifier) {
+    val next = state.next
+    val paused = state.pausedUntil
+    LcdPanel(modifier) {
         Text(
             stringResource(R.string.next_alarm_label).uppercase(),
             style = OverlineStyle,
@@ -149,7 +162,7 @@ fun NextAlarmPanel(state: MainUiState, onResume: () -> Unit, modifier: Modifier 
             },
             label = "lcd",
         ) { text ->
-            LcdText(text = text, size = 92.sp, color = ParakeetLime.copy(alpha = if (next == null) 0.45f else 1f), modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+            LcdText(text = text, size = 92.sp, color = ParakeetLime.copy(alpha = if (next == null) 0.45f else 1f), modifier = Modifier.padding(top = 2.dp, bottom = LcdToCaption))
         }
         if (next?.wakeAt != null) {
             Text(
@@ -159,7 +172,7 @@ fun NextAlarmPanel(state: MainUiState, onResume: () -> Unit, modifier: Modifier 
                 textAlign = TextAlign.Center,
             )
             next.routine?.let { r ->
-                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(10.dp).clip(CircleShape).background(r.uiColor()))
                     Spacer(Modifier.width(8.dp))
                     Text(

@@ -743,20 +743,10 @@ private fun SetAlarmButton(state: MainUiState, onSet: () -> Unit) {
 @Composable
 private fun SimpleHeader(state: MainUiState, onEditExit: () -> Unit) {
     val plan = state.simplePlan
-    val dark = isSystemInDarkTheme()
     Column(Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(if (dark) Color(0xFF080A06) else ParakeetDarker)
-                .border(1.dp, ParakeetLime.copy(alpha = if (dark) 0.5f else 0f), MaterialTheme.shapes.extraLarge)
-                .padding(top = 20.dp, bottom = 22.dp)
-                .semantics(mergeDescendants = true) {},
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        LcdPanel {
             Text(stringResource(R.string.wake_up_label).uppercase(), style = OverlineStyle, color = ParakeetLime.copy(alpha = 0.9f))
-            LcdText(text = plan?.wakeAt?.lcd() ?: "--:--", size = 96.sp, color = ParakeetLime, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+            LcdText(text = plan?.wakeAt?.lcd() ?: "--:--", size = 92.sp, color = ParakeetLime, modifier = Modifier.padding(top = 2.dp, bottom = LcdToCaption))
             Text(
                 plan?.let { dayLabel(it.wakeAt, LocalDate.now()) } ?: stringResource(R.string.exit_not_set),
                 style = MaterialTheme.typography.titleMedium,
