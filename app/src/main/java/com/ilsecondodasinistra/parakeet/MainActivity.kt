@@ -1,6 +1,13 @@
 package com.ilsecondodasinistra.parakeet
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.ilsecondodasinistra.parakeet.alarm.AlarmState
+import com.ilsecondodasinistra.parakeet.ui.alarm.AlarmActivity
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -48,6 +55,16 @@ class MainActivity : ComponentActivity() {
         installSplashScreen().setKeepOnScreenCondition { !ready }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Opening Parakeet while the alarm rings leads straight to the screen that stops it
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                AlarmState.ringing.collect { ring ->
+                    if (ring != null) {
+                        startActivity(Intent(this@MainActivity, AlarmActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }
+            }
+        }
         setContent {
             ParakeetTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {

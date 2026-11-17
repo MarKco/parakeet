@@ -231,4 +231,5 @@
     <string name="routine_exit_short">esci %1$s</string>
     <string name="pause_title">Sospendi le sveglie fino al…</string>
     <string name="menu_pause">Metti in pausa…</string>
+    <string name="notif_blocked_alarm">Le notifiche sono disattivate: quando la sveglia suona non la vedrai sulla schermata di blocco e potrebbe essere difficile spegnerla.</string>
 </resources>

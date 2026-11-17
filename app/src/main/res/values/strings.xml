@@ -245,4 +245,5 @@
     <string name="routine_exit_short">leave %1$s</string>
     <string name="pause_title">Pause alarms until…</string>
     <string name="menu_pause">Pause alarms…</string>
+    <string name="notif_blocked_alarm">Notifications are off: when the alarm rings you won\'t see it on the lock screen and it may be hard to stop.</string>
 </resources>

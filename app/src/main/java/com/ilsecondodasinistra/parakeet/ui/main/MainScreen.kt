@@ -1,6 +1,15 @@
 package com.ilsecondodasinistra.parakeet.ui.main
 
+import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.ilsecondodasinistra.parakeet.alarm.Notifications
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandHorizontally
@@ -157,6 +166,18 @@ fun MainScreen(
     val wide = config.screenWidthDp >= 720 && config.screenWidthDp > config.screenHeightDp
     val day = state.day
 
+    // The in-app alarm needs notifications: without them it rings but cannot be stopped from the lock screen
+    var notificationsOn by remember { mutableStateOf(Notifications.canPost(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = Notifications.canPost(context) }
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsOn = Notifications.canPost(context)
+        if (!granted || !notificationsOn) {
+            context.startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+        }
+    }
+
     // One-shot events -> snackbars (+ icon animation when the alarm moves)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -252,6 +273,14 @@ fun MainScreen(
                     DaysHint(onChoose = { if (r != null) onEditRoutine(r.id, null) else onOpenRoutines() }, onDismiss = viewModel::dismissDaysHint)
                 }
                 state.clockAlarm?.let { ClockStatusCard(it, viewModel::cancelClockAlarm) }
+                if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) {
+                    NotificationsWarning(onAllow = {
+                        if (Build.VERSION.SDK_INT >= 33) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        else context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                        )
+                    })
+                }
             }
         }
         val dayItems: LazyListScope.() -> Unit = {
@@ -468,6 +497,24 @@ private fun HeaderRow(
         if (trailing != null) {
             Spacer(Modifier.width(16.dp))
             trailing()
+        }
+    }
+}
+
+/** In-app alarm with notifications blocked: explains why they matter and asks for them. */
+@Composable
+private fun NotificationsWarning(onAllow: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)) {
+            Text(
+                stringResource(R.string.notif_blocked_alarm),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onAllow, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.mode_allow)) }
+            }
         }
     }
 }
