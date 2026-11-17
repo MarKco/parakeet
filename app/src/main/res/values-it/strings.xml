@@ -217,7 +217,7 @@
     <string name="onb_when_weekly">Ogni %1$s</string>
     <string name="settings_reminders">Promemoria</string>
     <string name="pre_alarm_title">Prima della sveglia</string>
-    <string name="pre_alarm_desc">Una notifica silenziosa 2 ore prima, per saltarla se sei già in piedi</string>
+    <string name="pre_alarm_desc">Una notifica silenziosa prima della sveglia, per saltarla se sei già in piedi</string>
     <string name="evening_title">Riepilogo serale</string>
     <string name="evening_desc">La sveglia di domani, alle %1$s</string>
     <string name="channel_upcoming_name">Sveglia in arrivo</string>
@@ -245,4 +245,8 @@
     <string name="alarm_action_stop">Spegni</string>
     <string name="evening_desc_plain">Una notifica la sera prima, con la sveglia di domani e il pulsante Salta</string>
     <string name="evening_time_title">Orario della notifica</string>
+    <string name="pre_alarm_offset_title">Quanto prima</string>
+    <string name="pre_alarm_offset_before">%1$s prima</string>
+    <string name="duration_h">%1$d h</string>
+    <string name="duration_h_m">%1$d h %2$d min</string>
 </resources>

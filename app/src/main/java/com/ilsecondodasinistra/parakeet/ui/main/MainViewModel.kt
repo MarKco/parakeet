@@ -523,6 +523,8 @@ class MainViewModel @Inject constructor(
 
     fun setPreAlarmNotify(enabled: Boolean) = viewModelScope.launch { settings.setPreAlarmNotify(enabled); alarmSync.sync() }
 
+    fun setPreAlarmMinutes(minutes: Int) = viewModelScope.launch { settings.setPreAlarmMinutes(minutes); alarmSync.sync() }
+
     fun setEveningSummary(enabled: Boolean) = viewModelScope.launch { settings.setEveningSummary(enabled); alarmSync.sync() }
 
     fun setEveningTime(time: LocalTime) = viewModelScope.launch {

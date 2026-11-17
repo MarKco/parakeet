@@ -114,13 +114,14 @@ class AlarmSync @Inject constructor(
         val exit = listOfNotNull(rungExit, next?.exitAt).map { it.toMillis() }.filter { it > System.currentTimeMillis() }.minOrNull()
         if (s.notifyOnExit && exit != null) exitNotifications.schedule(exit) else exitNotifications.cancel()
 
-        // "Upcoming alarm · Skip" about 2 h before; a notification already shown for another day is stale
+        // "Upcoming alarm · Skip" a chosen time before (2 h by default); a notification already shown for another day is stale
         val nowMillis = System.currentTimeMillis()
-        if (next == null || next.wakeAt!!.toMillis() - nowMillis > PRE_ALARM_MILLIS) {
+        val preAlarmMillis = s.plan.preAlarmMinutes * 60_000L
+        if (next == null || next.wakeAt!!.toMillis() - nowMillis > preAlarmMillis) {
             NotificationManagerCompat.from(context).cancel(NOTIF_PRE_ALARM)
         }
         if (s.plan.preAlarmNotify && next?.wakeAt != null) {
-            val at = next.wakeAt.toMillis() - PRE_ALARM_MILLIS
+            val at = next.wakeAt.toMillis() - preAlarmMillis
             if (at > nowMillis) schedule(ACTION_PRE_ALARM, at, next.date) else cancel(ACTION_PRE_ALARM)
         } else cancel(ACTION_PRE_ALARM)
 
@@ -213,7 +214,6 @@ class AlarmSync @Inject constructor(
         private const val RC_SKIP = 12
         private const val NOTIF_PRE_ALARM = 10
         private const val NOTIF_EVENING = 11
-        private const val PRE_ALARM_MILLIS = 2 * 60 * 60_000L
         private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
     }
 }

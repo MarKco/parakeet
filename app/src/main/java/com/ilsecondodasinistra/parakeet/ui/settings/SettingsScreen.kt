@@ -38,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Schedule
@@ -214,6 +217,7 @@ private fun PlanModeSection(state: MainUiState, viewModel: MainViewModel) {
 @Composable
 private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
     var pickEvening by remember { mutableStateOf(false) }
+    var pickOffset by remember { mutableStateOf(false) }
     val prefs = state.planPrefs
     val evening = java.time.LocalTime.of(prefs.eveningMinute / 60, prefs.eveningMinute % 60)
     Text(
@@ -223,12 +227,23 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
         modifier = Modifier.padding(start = 4.dp, top = 8.dp),
     )
     SettingsCard {
-        SwitchRow(
-            title = stringResource(R.string.pre_alarm_title),
-            description = stringResource(R.string.pre_alarm_desc),
-            checked = prefs.preAlarmNotify,
-            onChange = viewModel::setPreAlarmNotify,
-        )
+        Column {
+            SwitchRow(
+                title = stringResource(R.string.pre_alarm_title),
+                description = stringResource(R.string.pre_alarm_desc),
+                checked = prefs.preAlarmNotify,
+                onChange = viewModel::setPreAlarmNotify,
+            )
+            androidx.compose.material3.HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            ValueRow(
+                icon = androidx.compose.material.icons.Icons.Outlined.Timer,
+                label = stringResource(R.string.pre_alarm_offset_title),
+                active = prefs.preAlarmNotify,
+                onClick = { pickOffset = true },
+            ) {
+                Text(offsetLabel(prefs.preAlarmMinutes), style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
+        }
     }
     SettingsCard {
         Column {
@@ -240,36 +255,45 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
             )
             // The time is always visible and the whole row opens the picker (dimmed while the summary is off)
             androidx.compose.material3.HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClickLabel = stringResource(R.string.evening_time_title), role = Role.Button) { pickEvening = true }
-                    .alpha(if (prefs.eveningSummary) 1f else 0.6f)
-                    .heightIn(min = 64.dp)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            ValueRow(
+                icon = androidx.compose.material.icons.Icons.Outlined.Schedule,
+                label = stringResource(R.string.evening_time_title),
+                active = prefs.eveningSummary,
+                onClick = { pickEvening = true },
             ) {
-                Icon(
-                    androidx.compose.material.icons.Icons.Outlined.Schedule,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(16.dp))
-                Text(stringResource(R.string.evening_time_title), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 com.ilsecondodasinistra.parakeet.ui.LcdText(
                     evening.format(java.time.format.DateTimeFormatter.ofPattern("H:mm")),
                     30.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Spacer(Modifier.width(16.dp))
-                Icon(
-                    androidx.compose.material.icons.Icons.Filled.Edit,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
             }
         }
+    }
+    if (pickOffset) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pickOffset = false },
+            title = { Text(stringResource(R.string.pre_alarm_offset_title)) },
+            text = {
+                Column {
+                    PreAlarmOffsets.forEach { m ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium)
+                                .selectable(selected = m == prefs.preAlarmMinutes, role = Role.RadioButton) {
+                                    viewModel.setPreAlarmMinutes(m); pickOffset = false
+                                }
+                                .heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.material3.RadioButton(selected = m == prefs.preAlarmMinutes, onClick = null, modifier = Modifier.padding(horizontal = 8.dp))
+                            Text(stringResource(R.string.pre_alarm_offset_before, offsetLabel(m)), style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pickOffset = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
     if (pickEvening) {
         com.ilsecondodasinistra.parakeet.ui.TimePickerDialog(
@@ -277,6 +301,48 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
             title = stringResource(R.string.evening_time_title),
             onConfirm = { viewModel.setEveningTime(it); pickEvening = false },
             onDismiss = { pickEvening = false },
+        )
+    }
+}
+
+private val PreAlarmOffsets = listOf(15, 30, 60, 90, 120, 180)
+
+/** "30 min", "1 h", "1 h 30 min". */
+@Composable
+private fun offsetLabel(minutes: Int): String = when {
+    minutes < 60 -> stringResource(R.string.duration_m, minutes)
+    minutes % 60 == 0 -> stringResource(R.string.duration_h, minutes / 60)
+    else -> stringResource(R.string.duration_h_m, minutes / 60, minutes % 60)
+}
+
+/** A setting value always on show; the whole row opens its editor (dimmed while its switch is off). */
+@Composable
+private fun ValueRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    value: @Composable () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .alpha(if (active) 1f else 0.6f)
+            .heightIn(min = 64.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(16.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        value()
+        Spacer(Modifier.width(16.dp))
+        Icon(
+            androidx.compose.material.icons.Icons.Filled.Edit,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
         )
     }
 }

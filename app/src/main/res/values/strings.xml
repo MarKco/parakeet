@@ -231,7 +231,7 @@
     <string name="onb_when_weekly">Every %1$s</string>
     <string name="settings_reminders">Reminders</string>
     <string name="pre_alarm_title">Before the alarm</string>
-    <string name="pre_alarm_desc">A silent notification 2 hours before, to skip it if you\'re already up</string>
+    <string name="pre_alarm_desc">A silent notification before the alarm, to skip it if you\'re already up</string>
     <string name="evening_title">Evening summary</string>
     <string name="evening_desc">Tomorrow\'s alarm, at %1$s</string>
     <string name="channel_upcoming_name">Upcoming alarm</string>
@@ -259,4 +259,8 @@
     <string name="alarm_action_stop">Stop</string>
     <string name="evening_desc_plain">A notification the evening before, with tomorrow\'s alarm and a Skip button</string>
     <string name="evening_time_title">Notification time</string>
+    <string name="pre_alarm_offset_title">How early</string>
+    <string name="pre_alarm_offset_before">%1$s before</string>
+    <string name="duration_h">%1$d h</string>
+    <string name="duration_h_m">%1$d h %2$d min</string>
 </resources>

@@ -48,7 +48,8 @@ data class PlanPrefs(
     val pausedUntil: Long? = null,       // alarms suspended up to this date (inclusive)
     val lastRungDay: Long? = null,       // date of the last occurrence that rang: never re-armed
     val armedDay: Long? = null,          // date of the occurrence currently armed
-    val preAlarmNotify: Boolean = true,  // "alarm at 6:45 · Skip" about 2 h before
+    val preAlarmNotify: Boolean = true,  // "alarm at 6:45 · Skip" some time before
+    val preAlarmMinutes: Int = 120,      // how long before the alarm
     val eveningSummary: Boolean = false, // "tomorrow: alarm 6:45" the evening before
     val eveningMinute: Int = 21 * 60 + 30,
     val hintDismissed: Boolean = false,  // "ring on other days too?" hint
@@ -92,6 +93,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val lastRungDay = longPreferencesKey("last_rung_day")
         val armedDay = longPreferencesKey("armed_day")
         val preAlarmNotify = booleanPreferencesKey("pre_alarm_notify")
+        val preAlarmMinutes = intPreferencesKey("pre_alarm_minutes")
         val eveningSummary = booleanPreferencesKey("evening_summary")
         val eveningMinute = intPreferencesKey("evening_minute")
         val hintDismissed = booleanPreferencesKey("plan_hint_dismissed")
@@ -128,6 +130,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 lastRungDay = this[Keys.lastRungDay],
                 armedDay = this[Keys.armedDay],
                 preAlarmNotify = this[Keys.preAlarmNotify] ?: true,
+                preAlarmMinutes = this[Keys.preAlarmMinutes] ?: 120,
                 eveningSummary = this[Keys.eveningSummary] ?: false,
                 eveningMinute = this[Keys.eveningMinute] ?: (21 * 60 + 30),
                 hintDismissed = this[Keys.hintDismissed] ?: false,
@@ -190,6 +193,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     suspend fun setPreAlarmNotify(value: Boolean) = context.dataStore.edit { it[Keys.preAlarmNotify] = value }
+
+    suspend fun setPreAlarmMinutes(value: Int) = context.dataStore.edit { it[Keys.preAlarmMinutes] = value }
 
     suspend fun setEveningSummary(value: Boolean) = context.dataStore.edit { it[Keys.eveningSummary] = value }
 
