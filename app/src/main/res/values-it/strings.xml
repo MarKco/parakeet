@@ -242,4 +242,5 @@
     <string name="plan_scheduled_desc">Routine per i giorni della settimana, modifiche una tantum, e la sveglia si riarma da sola.</string>
     <string name="onb_mode_title">Come vuoi usare Parakeet?</string>
     <string name="onb_mode_body">Puoi cambiare quando vuoi dalle Impostazioni, senza perdere nulla.</string>
+    <string name="alarm_action_stop">Spegni</string>
 </resources>

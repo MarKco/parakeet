@@ -72,17 +72,7 @@ class AlarmService : Service() {
         val now = System.currentTimeMillis()
         val full = Intent(this, AlarmActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         val fullPi = PendingIntent.getActivity(this, 0, full, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val notification: Notification = NotificationCompat.Builder(this, Notifications.CHANNEL_ALARM)
-            .setSmallIcon(R.drawable.ic_stat_parakeet)
-            .setContentTitle(getString(R.string.alarm_ring_title))
-            .setContentText(getString(R.string.alarm_ring_text))
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setOngoing(true)
-            .setContentIntent(fullPi)
-            .setFullScreenIntent(fullPi, true)
-            .build()
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        startForeground(NOTIFICATION_ID, ringingNotification(fullPi, snoozeMinutes = 0), ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
 
         AlarmState.set(Ringing(now))
         wakeLock = getSystemService(PowerManager::class.java)
@@ -92,8 +82,45 @@ class AlarmService : Service() {
             val prefs = settings.current().ringing
             playSound(prefs.ringtone)
             if (prefs.vibrate) vibrate()
+            // Now that the snooze length is known, add the "Snooze" button (same notification, no new alert)
+            if (prefs.snoozeMinutes > 0 && Notifications.canPost(this@AlarmService)) {
+                @Suppress("MissingPermission") // checked by Notifications.canPost
+                androidx.core.app.NotificationManagerCompat.from(this@AlarmService)
+                    .notify(NOTIFICATION_ID, ringingNotification(fullPi, prefs.snoozeMinutes))
+            }
         }
         autoStop = scope.launch { delay(MAX_RING_MILLIS); stopRinging() }
+    }
+
+    /**
+     * The ringing notification. FOREGROUND_SERVICE_IMMEDIATE matters: without it Android 12+ holds a
+     * foreground-service notification back for 10 s, so the full-screen alarm over the lock screen appeared
+     * only after 10 s of ringing (measured on API 37). The buttons also help when the phone is unlocked,
+     * where Android shows only a heads-up banner instead of the full screen.
+     */
+    private fun ringingNotification(fullPi: PendingIntent, snoozeMinutes: Int): Notification {
+        val builder = NotificationCompat.Builder(this, Notifications.CHANNEL_ALARM)
+            .setSmallIcon(R.drawable.ic_stat_parakeet)
+            .setContentTitle(getString(R.string.alarm_ring_title))
+            .setContentText(getString(R.string.alarm_ring_text))
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(fullPi)
+            .setFullScreenIntent(fullPi, true)
+            // "Stop" opens the alarm screen, so the chosen challenge (slide, math, shake, QR) still applies
+            .addAction(0, getString(R.string.alarm_action_stop), fullPi)
+        if (snoozeMinutes > 0) {
+            val snoozePi = PendingIntent.getService(
+                this, 1, Intent(this, AlarmService::class.java).setAction(ACTION_SNOOZE),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.addAction(0, getString(R.string.alarm_snooze, snoozeMinutes), snoozePi)
+        }
+        return builder.build()
     }
 
     private fun playSound(ringtone: String) {

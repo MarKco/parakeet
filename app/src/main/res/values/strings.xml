@@ -256,4 +256,5 @@
     <string name="plan_scheduled_desc">Routines for each weekday, one-time changes, and the alarm re-arms by itself.</string>
     <string name="onb_mode_title">How do you want to use Parakeet?</string>
     <string name="onb_mode_body">You can switch any time in Settings, without losing anything.</string>
+    <string name="alarm_action_stop">Stop</string>
 </resources>
