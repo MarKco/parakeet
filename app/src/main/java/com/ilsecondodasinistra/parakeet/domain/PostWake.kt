@@ -55,6 +55,8 @@ data class TimelineState(
     val exitAtMillis: Long,
     val nowMillis: Long,
     val msPerMinute: Long,
+    /** The "time for the unexpected" planned at the end of the morning (it is part of [marginMillis] from the start). */
+    val bufferMillis: Long,
     /** Next instant at which the state changes on its own (the current task passes its time, the margin runs out, the exit), null after the exit. */
     val nextBoundaryMillis: Long?,
     /** How many events shaped this timeline: changes exactly when the user acts, which is when the ring animates. */
@@ -64,6 +66,9 @@ data class TimelineState(
     val allResolved: Boolean get() = steps.none { it.status == StepStatus.CURRENT || it.status == StepStatus.UPCOMING }
     val current: StepState? get() = steps.getOrNull(currentIndex)
     val remainingToExitMillis: Long get() = (exitAtMillis - nowMillis).coerceAtLeast(0)
+
+    /** What was gained on the plan: the margin above the planned cushion. */
+    val gainedMillis: Long get() = (marginMillis - bufferMillis).coerceAtLeast(0)
 
     /** Rounded down: the margin is never overstated. */
     val marginMinutes: Int get() = (marginMillis / msPerMinute).toInt()
@@ -88,6 +93,8 @@ data class TimelineState(
  * - The current task stays current until the user acts. Past its planned time its slot keeps growing with the
  *   clock ([StepState.overrun]), pushing the later slots forward and eating the margin.
  * - "Done" or "Skip" end the slot right there: the time not used moves to the margin, one block at the end.
+ * - The "time for the unexpected" is not a task of the queue: [tasks] leaves it out and [bufferMillis] says how
+ *   much of the end of the ring it is. It is just margin from the start, consumed by running over without any alert.
  * - "Do it later" ends the slot there too and queues the task again at the back, with the minutes it still
  *   needed (at least [DEFER_MIN_MINUTES], or its whole duration if that is shorter).
  * - Once the end of the last slot passes the exit, the plan no longer fits: [TimelineState.overflowMillis].
@@ -108,6 +115,7 @@ object PostWakeTimeline {
         events: List<PostWakeEvent>,
         nowMillis: Long,
         msPerMinute: Long = MINUTE_MILLIS,
+        bufferMillis: Long = 0,
     ): TimelineState {
         val segments = ArrayList<StepState>(tasks.size)
         val queue = ArrayDeque(tasks.mapIndexed { i, t -> Slot(i, t, t.minutes * msPerMinute, false) })
@@ -183,6 +191,7 @@ object PostWakeTimeline {
             exitAtMillis = exitAtMillis,
             nowMillis = nowMillis,
             msPerMinute = msPerMinute,
+            bufferMillis = bufferMillis,
             nextBoundaryMillis = boundary,
             eventCount = consumed.size,
         )

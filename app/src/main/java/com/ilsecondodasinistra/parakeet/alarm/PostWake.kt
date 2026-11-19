@@ -85,7 +85,8 @@ class PostWake @Inject constructor(
         val wake = schedule.wakeAt ?: return false
         val exit = schedule.exitAt ?: return false
         val steps = tasks.tasks.first().filter { it.id in schedule.taskIds }
-        if (steps.size < 2 || exit.toMillis() <= System.currentTimeMillis()) return false
+        // Two activities at least (the cushion of the plan is not one); the cushion stays in the session for the ring
+        if (steps.count { !it.buffer } < 2 || exit.toMillis() <= System.currentTimeMillis()) return false
         start(PostWakeSession(day, wake.toMillis(), exit.toMillis(), steps.map { it.id }, PostWakeTimeline.MINUTE_MILLIS, emptyList()))
         true
     }
@@ -95,10 +96,11 @@ class PostWake @Inject constructor(
         val catalog = tasks.tasks.first()
         val planned = alarmSync.next()?.taskIds.orEmpty()
         var steps = catalog.filter { it.id in planned }
-        if (steps.size < 2) steps = catalog.filter { it.checked }
-        if (steps.size < 2) steps = catalog
-        steps = steps.take(DEMO_MAX_STEPS)
-        if (steps.size < 2) return false
+        if (steps.count { !it.buffer } < 2) steps = catalog.filter { it.checked }
+        if (steps.count { !it.buffer } < 2) steps = catalog
+        // A handful of activities, and the cushion of the plan if there is one
+        steps = steps.filter { !it.buffer }.take(DEMO_MAX_STEPS) + steps.filter { it.buffer }
+        if (steps.count { !it.buffer } < 2) return false
         val now = System.currentTimeMillis()
         val exit = now + steps.sumOf { it.minutes } * DEMO_MS_PER_MINUTE
         start(PostWakeSession(LocalDate.now().toEpochDay(), now, exit, steps.map { it.id }, DEMO_MS_PER_MINUTE, emptyList()))
@@ -310,9 +312,11 @@ class PostWake @Inject constructor(
         /** The session resolved against the catalog (edited names show up, deleted activities drop out). */
         fun timeline(session: PostWakeSession, catalog: List<Task>, nowMillis: Long): TimelineState {
             val byId = catalog.associateBy { it.id }
+            val planned = session.taskIds.mapNotNull(byId::get)
             return PostWakeTimeline.compute(
-                session.wakeAtMillis, session.exitAtMillis, session.taskIds.mapNotNull(byId::get),
+                session.wakeAtMillis, session.exitAtMillis, planned.filter { !it.buffer },
                 session.events, nowMillis, session.msPerMinute,
+                bufferMillis = planned.filter { it.buffer }.sumOf { it.minutes } * session.msPerMinute,
             )
         }
     }

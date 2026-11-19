@@ -6,6 +6,7 @@ import com.ilsecondodasinistra.parakeet.alarm.AlarmScheduler
 import com.ilsecondodasinistra.parakeet.alarm.RoutingAlarmScheduler
 import com.ilsecondodasinistra.parakeet.data.AppDatabase
 import com.ilsecondodasinistra.parakeet.data.MIGRATION_1_2
+import com.ilsecondodasinistra.parakeet.data.MIGRATION_2_3
 import com.ilsecondodasinistra.parakeet.data.PlanDao
 import com.ilsecondodasinistra.parakeet.data.TaskDao
 import dagger.Binds
@@ -22,7 +23,7 @@ import javax.inject.Singleton
 object AppModule {
     @Provides @Singleton
     fun database(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "parakeet.db").addMigrations(MIGRATION_1_2).build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "parakeet.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
 
     @Provides fun taskDao(db: AppDatabase): TaskDao = db.taskDao()
 

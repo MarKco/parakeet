@@ -1,5 +1,6 @@
 package com.ilsecondodasinistra.parakeet.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -18,10 +19,11 @@ data class TaskEntity(
     val minutes: Int,
     val checked: Boolean,
     val position: Int,
+    @ColumnInfo(defaultValue = "0") val buffer: Boolean = false,
 )
 
-fun TaskEntity.toDomain() = Task(id, name, minutes, checked, position)
-fun Task.toEntity() = TaskEntity(id, name, minutes, checked, position)
+fun TaskEntity.toDomain() = Task(id, name, minutes, checked, position, buffer)
+fun Task.toEntity() = TaskEntity(id, name, minutes, checked, position, buffer)
 
 @Dao
 interface TaskDao {
@@ -52,7 +54,7 @@ interface TaskDao {
 
 @Database(
     entities = [TaskEntity::class, RoutineEntity::class, RoutineTaskEntity::class, DayPlanEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -235,6 +235,47 @@ class PostWakeTimelineTest {
         assertEquals(1, t.overflowMinutes) // 5 s late = under one demo minute, rounded up
     }
 
+    // A planned cushion of 5 min: the morning is 45 min of activities + 5 min of cushion, exit at 07:50
+    private fun withCushion(now: Long, vararg events: PostWakeEvent) =
+        PostWakeTimeline.compute(wake, at(7, 50), tasks, events.toList(), now, bufferMillis = 5 * minute)
+
+    @Test fun aPlannedCushionIsMarginFromTheStart() {
+        val t = withCushion(at(7, 10))
+        assertEquals(5 * minute, t.marginMillis)
+        assertEquals(5 * minute, t.bufferMillis)
+        assertEquals(0L, t.gainedMillis) // nothing gained yet: the cushion was planned
+        assertEquals(0L, t.overflowMillis)
+    }
+
+    @Test fun runningOverUsesTheCushionWithoutLateness() {
+        // Doccia (until 07:15) still going at 07:18: 3 min over, the cushion goes from 5 to 2
+        val t = withCushion(at(7, 18))
+        assertEquals(2 * minute, t.marginMillis)
+        assertEquals(0L, t.overflowMillis)
+        assertTrue(t.marginEroding)
+    }
+
+    @Test fun lateOnlyOnceTheCushionIsGone() {
+        val t = withCushion(at(7, 21))
+        assertEquals(0L, t.marginMillis)
+        assertEquals(1 * minute, t.overflowMillis)
+        // and the moment it runs out is a moment to wake up for
+        assertEquals(at(7, 20), withCushion(at(7, 18)).nextBoundaryMillis)
+    }
+
+    @Test fun gainedIsWhatIsAboveTheCushion() {
+        // Doccia done 10 min early: 5 planned + 10 gained
+        val t = withCushion(at(7, 8), PostWakeEvent(1, DONE, at(7, 5)))
+        assertEquals(15 * minute, t.marginMillis)
+        assertEquals(10 * minute, t.gainedMillis)
+    }
+
+    @Test fun withoutACushionNothingChanges() {
+        val t = compute(at(7, 10))
+        assertEquals(0L, t.bufferMillis)
+        assertEquals(t.marginMillis, t.gainedMillis)
+    }
+
     @Test fun eventsRoundTripThroughTheStringFormat() {
         val events = listOf(PostWakeEvent(1, DONE, 1000L), PostWakeEvent(7, DEFER, 2000L), PostWakeEvent(9, SKIP, 3000L))
         assertEquals(events, PostWakeTimeline.decode(PostWakeTimeline.encode(events)))

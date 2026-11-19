@@ -13,8 +13,8 @@ class TaskRepository @Inject constructor(private val dao: TaskDao) {
 
     suspend fun count() = dao.count()
 
-    suspend fun add(name: String, minutes: Int, checked: Boolean = true): Long =
-        dao.insert(TaskEntity(name = name.trim(), minutes = minutes, checked = checked, position = dao.nextPosition()))
+    suspend fun add(name: String, minutes: Int, checked: Boolean = true, buffer: Boolean = false): Long =
+        dao.insert(TaskEntity(name = name.trim(), minutes = minutes, checked = checked, position = dao.nextPosition(), buffer = buffer))
 
     suspend fun update(task: Task) = dao.update(task.toEntity())
 

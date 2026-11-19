@@ -11,6 +11,11 @@ data class Task(
     val minutes: Int,
     val checked: Boolean,
     val position: Int = 0,
+    /**
+     * "Time for the unexpected": minutes of the plan that are not an activity. The wake-up is earlier by that
+     * much, and after the alarm it is the cushion at the end of the ring, used up by anything that runs over.
+     */
+    val buffer: Boolean = false,
 )
 
 /** Result of the wake-up computation, shown on the main card. */
