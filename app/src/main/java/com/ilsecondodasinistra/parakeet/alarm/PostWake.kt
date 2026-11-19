@@ -96,11 +96,13 @@ class PostWake @Inject constructor(
         refreshLocked()
     }
 
-    /** "Done" / "Next" on [taskId]. Ignored unless that task is the current one (a stale notification tap). */
+    /** "Done" / "Do it later" / "Skip for today" on [taskId]. Ignored unless that task is the current one (a stale notification tap). */
     suspend fun act(taskId: Long, action: PostWakeAction) = mutex.withLock {
         val session = settings.current().postWakeSession ?: return@withLock
         val now = System.currentTimeMillis()
-        if (timeline(session, tasks.tasks.first(), now).current?.task?.id != taskId) return@withLock
+        val state = timeline(session, tasks.tasks.first(), now)
+        if (state.current?.task?.id != taskId) return@withLock
+        if (action == PostWakeAction.DEFER && !state.canDefer) return@withLock // nobody else to do first
         settings.appendPostWakeEvent(PostWakeEvent(taskId, action, now))
         refreshLocked()
     }
@@ -151,12 +153,15 @@ class PostWake @Inject constructor(
             .setSilent(true)
             .setContentIntent(open)
         if (current != null) {
+            // The system draws the live clock: down to the end of the planned time, up once the activity runs over
             builder.setContentTitle(current.task.name)
-                .setContentText(context.getString(R.string.notif_postwake_text, exitTime))
-                // The system draws the live countdown to the end of this activity: no update every second
-                .setShowWhen(true).setWhen(current.endMillis).setUsesChronometer(true).setChronometerCountDown(true)
+                .setContentText(context.getString(if (current.overrun) R.string.notif_postwake_late else R.string.notif_postwake_text, exitTime))
+                .setShowWhen(true).setWhen(current.plannedEndMillis).setUsesChronometer(true).setChronometerCountDown(!current.overrun)
                 .addAction(0, context.getString(R.string.postwake_done), action(ACTION_DONE, RC_DONE, current.task.id))
-                .addAction(0, context.getString(R.string.postwake_next), action(ACTION_SKIP, RC_SKIP, current.task.id))
+            if (state.canDefer) {
+                builder.addAction(0, context.getString(R.string.postwake_later), action(ACTION_LATER, RC_LATER, current.task.id))
+            }
+            builder.addAction(0, context.getString(R.string.postwake_skip), action(ACTION_SKIP, RC_SKIP, current.task.id))
         } else {
             builder.setContentTitle(context.getString(R.string.notif_postwake_all_done))
                 .setContentText(context.getString(R.string.notif_postwake_margin, state.marginMinutes, exitTime))
@@ -182,13 +187,15 @@ class PostWake @Inject constructor(
     companion object {
         const val ACTION_TICK = "com.ilsecondodasinistra.parakeet.POSTWAKE_TICK"
         const val ACTION_DONE = "com.ilsecondodasinistra.parakeet.POSTWAKE_DONE"
+        const val ACTION_LATER = "com.ilsecondodasinistra.parakeet.POSTWAKE_LATER"
         const val ACTION_SKIP = "com.ilsecondodasinistra.parakeet.POSTWAKE_SKIP"
         const val EXTRA_TASK = "task"
         private const val NOTIFICATION_ID = 20
         private const val RC_TICK = 20
         private const val RC_DONE = 21
-        private const val RC_SKIP = 22
+        private const val RC_LATER = 22
         private const val RC_OPEN = 23
+        private const val RC_SKIP = 24
         private const val DEMO_MS_PER_MINUTE = 5_000L
         private const val DEMO_MAX_STEPS = 5
         private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
@@ -204,7 +211,7 @@ class PostWake @Inject constructor(
     }
 }
 
-/** Notification buttons ("Done", "Next") and the wake-up at each moment the timeline moves on. */
+/** Notification buttons ("Done", "Do it later", "Skip for today") and the wake-up at each moment the timeline moves on. */
 @AndroidEntryPoint
 class PostWakeReceiver : BroadcastReceiver() {
     @Inject lateinit var postWake: PostWake
@@ -216,6 +223,7 @@ class PostWakeReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     PostWake.ACTION_DONE -> postWake.act(taskId, PostWakeAction.DONE)
+                    PostWake.ACTION_LATER -> postWake.act(taskId, PostWakeAction.DEFER)
                     PostWake.ACTION_SKIP -> postWake.act(taskId, PostWakeAction.SKIP)
                     else -> postWake.refresh()
                 }

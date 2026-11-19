@@ -1,7 +1,10 @@
 package com.ilsecondodasinistra.parakeet.domain
 
-/** What the user did to the task that was current at [atMillis]. */
-enum class PostWakeAction { DONE, SKIP }
+/**
+ * What the user did to the task that was current at [PostWakeEvent.atMillis]. DEFER = "do it later": the task goes
+ * to the back of the queue. SKIP = "skip for today": its unused time goes to the margin.
+ */
+enum class PostWakeAction { DONE, DEFER, SKIP }
 
 data class PostWakeEvent(val taskId: Long, val action: PostWakeAction, val atMillis: Long)
 
@@ -9,52 +12,94 @@ enum class StepStatus {
     /** Ticked by the user. */
     DONE,
 
-    /** Passed over with "Next": not done. */
+    /** Skipped for today. */
     SKIPPED,
 
-    /** Its time ran out with no action: the timeline moved on by itself. */
-    EXPIRED,
+    /** Put off with "do it later": this slot ended there and the task has another one at the back of the queue. */
+    DEFERRED,
     CURRENT,
     UPCOMING,
 }
 
-/** One task on the post-wake timeline. For [StepStatus.CURRENT] and [StepStatus.UPCOMING] the times are projected. */
+/**
+ * One slot of a task on the post-wake timeline. For [StepStatus.CURRENT] and [StepStatus.UPCOMING] the times are
+ * projected. [plannedEndMillis] is where the slot ends if all goes as planned; [endMillis] is later than that for
+ * a current task that is [overrun]. [colorIndex] is the position of the task in the original order, so its colour
+ * never changes when it is postponed. [postponed] marks a later slot of a task that was put off before.
+ * [beyondExit] is a task that, at this pace, no longer ends before the exit.
+ */
 data class StepState(
     val task: Task,
     val status: StepStatus,
     val startMillis: Long,
     val endMillis: Long,
+    val plannedEndMillis: Long,
+    val colorIndex: Int,
+    val postponed: Boolean = false,
+    val overrun: Boolean = false,
+    val beyondExit: Boolean = false,
 )
 
 data class TimelineState(
+    /** Every slot in time order, including the used part of postponed tasks: what the ring draws. */
+    val segments: List<StepState>,
+    /** One row per task, in the order of the latest slot of each (a postponed task sits at the back): the list. */
     val steps: List<StepState>,
-    /** Index of the task being done now, -1 when none (before the wake-up, or everything is resolved). */
+    /** Index in [steps] of the task being done now, -1 when none (before the wake-up, or everything is resolved). */
     val currentIndex: Int,
-    /** Time left between the end of the last task and the exit, gained by finishing early. */
+    /** The one "contingency" block at the end of the ring: time left between the end of the last slot and the exit. */
     val marginMillis: Long,
+    /** How far the end of the last slot is past the exit (the margin is used up and the plan no longer fits). */
+    val overflowMillis: Long,
     val wakeAtMillis: Long,
     val exitAtMillis: Long,
     val nowMillis: Long,
     val msPerMinute: Long,
-    /** Next instant at which the state changes on its own (a task runs out, the exit), null once the exit has passed. */
+    /** Next instant at which the state changes on its own (the current task passes its time, the exit), null after the exit. */
     val nextBoundaryMillis: Long?,
+    /** How many events shaped this timeline: changes exactly when the user acts, which is when the ring animates. */
+    val eventCount: Int,
 ) {
     val exitDue: Boolean get() = nowMillis >= exitAtMillis
     val allResolved: Boolean get() = steps.none { it.status == StepStatus.CURRENT || it.status == StepStatus.UPCOMING }
     val current: StepState? get() = steps.getOrNull(currentIndex)
     val remainingToExitMillis: Long get() = (exitAtMillis - nowMillis).coerceAtLeast(0)
+
+    /** Rounded down: the margin is never overstated. */
     val marginMinutes: Int get() = (marginMillis / msPerMinute).toInt()
+
+    /** Rounded up: lateness is never understated. */
+    val overflowMinutes: Int get() = ((overflowMillis + msPerMinute - 1) / msPerMinute).toInt()
+
+    /** The current task is taking longer than planned and is eating into the margin. */
+    val marginEroding: Boolean get() = current?.overrun == true && marginMillis > 0
+
+    /** "Do it later" only makes sense while another task waits behind the current one. */
+    val canDefer: Boolean
+        get() = currentIndex >= 0 && steps.drop(currentIndex + 1).any { it.status == StepStatus.UPCOMING }
+
+    val canSkip: Boolean get() = currentIndex >= 0
 }
 
 /**
- * The morning after the alarm: tasks laid end to end from the scheduled wake-up. "Done" or "Next" pressed
- * while a task is current ends it right there and the following one starts at once (the time saved becomes
- * margin before the exit). A task whose time runs out with no action ends by itself, as [StepStatus.EXPIRED].
+ * The morning after the alarm: tasks laid end to end from the scheduled wake-up, the whole ring being
+ * wake-up → exit. The cursor is the real clock; nothing moves on by itself.
+ *
+ * - The current task stays current until the user acts. Past its planned time its slot keeps growing with the
+ *   clock ([StepState.overrun]), pushing the later slots forward and eating the margin.
+ * - "Done" or "Skip" end the slot right there: the time not used moves to the margin, one block at the end.
+ * - "Do it later" ends the slot there too and queues the task again at the back, with the minutes it still
+ *   needed (at least [DEFER_MIN_MINUTES], or its whole duration if that is shorter).
+ * - Once the end of the last slot passes the exit, the plan no longer fits: [TimelineState.overflowMillis].
+ *
  * Pure function of the event log, so it can be recomputed after a process death.
  */
 object PostWakeTimeline {
 
     const val MINUTE_MILLIS = 60_000L
+    const val DEFER_MIN_MINUTES = 5
+
+    private data class Slot(val colorIndex: Int, val task: Task, val budgetMillis: Long, val postponed: Boolean)
 
     fun compute(
         wakeAtMillis: Long,
@@ -64,58 +109,92 @@ object PostWakeTimeline {
         nowMillis: Long,
         msPerMinute: Long = MINUTE_MILLIS,
     ): TimelineState {
-        val steps = ArrayList<StepState>(tasks.size)
+        val segments = ArrayList<StepState>(tasks.size)
+        val queue = ArrayDeque(tasks.mapIndexed { i, t -> Slot(i, t, t.minutes * msPerMinute, false) })
+        val consumed = HashSet<Int>() // an event ends exactly one slot, never the one it just opened
         var cursor = wakeAtMillis
-        var currentIndex = -1
-        var currentEnd: Long? = null
-        for ((i, task) in tasks.withIndex()) {
+        var currentFound = false
+        while (queue.isNotEmpty()) {
+            val slot = queue.removeFirst()
+            val task = slot.task
             val start = cursor
-            val nominalEnd = start + task.minutes * msPerMinute
-            val reached = currentIndex == -1 && start <= nowMillis
-            val event = if (reached) {
-                events.filter { it.taskId == task.id && it.atMillis in start until nominalEnd && it.atMillis <= nowMillis }
-                    .minByOrNull { it.atMillis }
+            val plannedEnd = start + slot.budgetMillis
+            val reached = !currentFound && start <= nowMillis
+            val eventIndex = if (reached) {
+                events.indices
+                    .filter { it !in consumed && events[it].taskId == task.id && events[it].atMillis in start..nowMillis }
+                    .minByOrNull { events[it].atMillis }
             } else null
+            val event = eventIndex?.let { events[it] }
+            if (eventIndex != null) consumed += eventIndex
             val state = when {
-                event != null -> StepState(
-                    task, if (event.action == PostWakeAction.DONE) StepStatus.DONE else StepStatus.SKIPPED,
-                    start, event.atMillis,
-                )
-                reached && nominalEnd <= nowMillis -> StepState(task, StepStatus.EXPIRED, start, nominalEnd)
-                reached -> {
-                    currentIndex = i
-                    currentEnd = nominalEnd
-                    StepState(task, StepStatus.CURRENT, start, nominalEnd)
+                event != null -> {
+                    val status = when (event.action) {
+                        PostWakeAction.DONE -> StepStatus.DONE
+                        PostWakeAction.SKIP -> StepStatus.SKIPPED
+                        PostWakeAction.DEFER -> StepStatus.DEFERRED
+                    }
+                    if (event.action == PostWakeAction.DEFER) {
+                        val remaining = (plannedEnd - event.atMillis).coerceAtLeast(0)
+                        val minimum = minOf(DEFER_MIN_MINUTES * msPerMinute, task.minutes * msPerMinute)
+                        queue.addLast(slot.copy(budgetMillis = maxOf(remaining, minimum), postponed = true))
+                    }
+                    StepState(task, status, start, event.atMillis, plannedEnd, slot.colorIndex, slot.postponed)
                 }
-                else -> StepState(task, StepStatus.UPCOMING, start, nominalEnd)
+                reached -> {
+                    currentFound = true
+                    StepState(
+                        task, StepStatus.CURRENT, start, maxOf(plannedEnd, nowMillis), plannedEnd, slot.colorIndex,
+                        slot.postponed, overrun = nowMillis > plannedEnd,
+                    )
+                }
+                else -> StepState(task, StepStatus.UPCOMING, start, plannedEnd, plannedEnd, slot.colorIndex, slot.postponed)
             }
-            steps += state
-            cursor = state.endMillis
+            val open = state.status == StepStatus.CURRENT || state.status == StepStatus.UPCOMING
+            val flagged = if (open && state.endMillis > exitAtMillis) state.copy(beyondExit = true) else state
+            segments += flagged
+            cursor = flagged.endMillis
         }
+        // The list shows each task once, at its latest slot
+        val lastSlot = HashMap<Long, Int>()
+        segments.forEachIndexed { i, s -> lastSlot[s.task.id] = i }
+        val steps = segments.filterIndexed { i, s -> lastSlot[s.task.id] == i }
+        val currentIndex = steps.indexOfFirst { it.status == StepStatus.CURRENT }
+        val current = steps.getOrNull(currentIndex)
         val boundary = when {
             nowMillis >= exitAtMillis -> null
             else -> listOfNotNull(
-                currentEnd,
+                current?.plannedEndMillis,
                 // before the wake-up nothing runs yet: the first task starts at the wake-up
                 wakeAtMillis.takeIf { currentIndex == -1 && it > nowMillis },
                 exitAtMillis,
             ).filter { it > nowMillis }.minOrNull()
         }
         return TimelineState(
+            segments = segments,
             steps = steps,
             currentIndex = currentIndex,
             marginMillis = (exitAtMillis - cursor).coerceAtLeast(0),
+            overflowMillis = (cursor - exitAtMillis).coerceAtLeast(0),
             wakeAtMillis = wakeAtMillis,
             exitAtMillis = exitAtMillis,
             nowMillis = nowMillis,
             msPerMinute = msPerMinute,
             nextBoundaryMillis = boundary,
+            eventCount = consumed.size,
         )
     }
 
-    /** `taskId:D|S:millis` pairs joined by `;`, for the DataStore. */
+    /** `taskId:D|L|S:millis` pairs joined by `;`, for the DataStore (D = done, L = later, S = skip). */
     fun encode(events: List<PostWakeEvent>): String =
-        events.joinToString(";") { "${it.taskId}:${if (it.action == PostWakeAction.DONE) 'D' else 'S'}:${it.atMillis}" }
+        events.joinToString(";") {
+            val code = when (it.action) {
+                PostWakeAction.DONE -> 'D'
+                PostWakeAction.DEFER -> 'L'
+                PostWakeAction.SKIP -> 'S'
+            }
+            "${it.taskId}:$code:${it.atMillis}"
+        }
 
     fun decode(raw: String?): List<PostWakeEvent> = raw.orEmpty().split(';').mapNotNull { part ->
         val f = part.split(':')
@@ -124,6 +203,7 @@ object PostWakeTimeline {
         val at = f[2].toLongOrNull() ?: return@mapNotNull null
         val action = when (f[1]) {
             "D" -> PostWakeAction.DONE
+            "L" -> PostWakeAction.DEFER
             "S" -> PostWakeAction.SKIP
             else -> return@mapNotNull null
         }

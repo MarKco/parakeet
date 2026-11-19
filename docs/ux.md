@@ -42,10 +42,13 @@ dopo: "Sveglia puntata · notifica uscita 8:00 · Annulla"
 
 ## Dopo la sveglia (5.2)
 Opzionale, spenta di default, solo con la sveglia interna. Le attività della routine del giorno diventano una lista guidata fino all'uscita.
-- **Anello a segmenti**: un arco colorato per attività (palette delle routine, a rotazione), si consuma in senso orario; il tempo guadagnato finendo in anticipo è un arco grigio prima dell'uscita. Sotto, la lista: le attività scadute senza "Fatta" sfumano.
-- **Fasce fisse + recupero**: i segmenti partono dall'ora di sveglia programmata (anche dopo uno snooze). "Fatta" spunta e fa partire subito la successiva; "Prossima" salta senza spuntare; se il tempo finisce da solo si passa alla successiva.
-- **Notifica in corso** con l'attività attuale, il conto alla rovescia di sistema e i pulsanti Fatta/Prossima. Niente overlay sopra le altre app: richiederebbe `SYSTEM_ALERT_WINDOW`.
-- **Sopra il blocco**: dopo "Spegni" la schermata si apre da `AlarmActivity` (già in primo piano), senza permessi nuovi.
+- **Un anello che non cambia mai scala**: sveglia → uscita. Un arco colorato per attività (palette delle routine, a rotazione), consumato in senso antiorario come un timer; il puntino è l'orologio reale. Il numero al centro è sempre il tempo vero all'uscita.
+- **Niente avanza da solo.** L'attività corrente resta tale finché non agisci, così si capisce sempre se sei in anticipo o in ritardo. Se sfora, il suo arco cresce con il cursore e spinge in avanti i successivi.
+- **Margine per imprevisti**: un solo arco grigio in fondo, lungo zero all'inizio. "Fatto" (o "Salta per oggi") in anticipo fa scivolare il tempo non usato fin lì, animato. Sforando, il margine si accorcia (riga di stato in ambra); finito il margine il piano non entra più prima dell'uscita: riga di stato corallo "In ritardo di X min", arco corallo sottile fuori dall'anello, puntino corallo sulle attività che non entrano.
+- **Tre pulsanti** sull'attività corrente: "Fatto", "Faccio dopo" (in coda con i minuti che le servono ancora, almeno 5; compare solo se dopo c'è altro) e "Salta per oggi" (i suoi minuti non usati vanno al margine).
+- **Coriandoli** e "Complimenti, hai finito tutto e sei in anticipo!" quando finisci l'ultima attività con margine (non se le animazioni di sistema sono spente).
+- **Notifica in corso** con l'attività attuale, il conto alla rovescia di sistema (che diventa conto in avanti se sfori) e gli stessi tre pulsanti. Niente overlay sopra le altre app: richiederebbe `SYSTEM_ALERT_WINDOW`.
+- **Sopra il blocco**: dopo "Spegni" la schermata si apre da `AlarmActivity` (già in primo piano), senza permessi nuovi. Sempre a tema scuro, come la schermata della sveglia.
 - **Proposta**: una sola card in schermata principale dopo la 2ª sveglia suonata davvero ("Provala" / "No grazie"), solo se serve (sveglia interna, funzione spenta, almeno 2 attività). Nessun passo di onboarding, nessun dialog "novità". Sempre nelle Impostazioni → "Dopo la sveglia".
 
 ## Onboarding

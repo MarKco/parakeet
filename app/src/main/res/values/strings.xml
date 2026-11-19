@@ -272,22 +272,21 @@
     <string name="postwake_title">Before you leave</string>
     <string name="postwake_to_exit">until %1$s</string>
     <string name="postwake_done">Done</string>
-    <string name="postwake_next">Next</string>
-    <string name="postwake_skipped">Skipped</string>
+    <string name="postwake_later">Do it later</string>
+    <string name="postwake_postponed_from">Postponed · from %1$s</string>
     <string name="postwake_left">%1$s left</string>
     <string name="postwake_from">from %1$s</string>
     <string name="postwake_time_up">Time to leave!</string>
-    <string name="postwake_all_done">All done</string>
-    <string name="postwake_margin">%1$d min to spare</string>
+    <string name="postwake_all_done">All done!</string>
     <string name="postwake_close">Close</string>
     <string name="cd_postwake_ring">Time left until you leave, one arc for each activity</string>
     <string name="settings_postwake">After the alarm</string>
     <string name="postwake_enable_title">Guide me after the alarm</string>
     <string name="postwake_enable_desc">Your morning activities as a to-do list, with a countdown to the time you leave</string>
     <string name="postwake_ring_title">Ring and list</string>
-    <string name="postwake_ring_desc">A ring that gets used up, and activities that fade when their time runs out</string>
+    <string name="postwake_ring_desc">A ring that gets used up, with the time you have left before you leave</string>
     <string name="postwake_notify_title">Next-thing notification</string>
-    <string name="postwake_notify_desc">Always shows the current activity, with Done and Next buttons</string>
+    <string name="postwake_notify_desc">Always shows the current activity, with buttons to mark it done, put it off or skip it</string>
     <string name="postwake_lock_title">Over the lock screen</string>
     <string name="postwake_lock_desc">After Stop, the list opens right away, even with the phone locked</string>
     <string name="postwake_try">Try it (1 min = 5 s)</string>
@@ -299,4 +298,14 @@
     <string name="postwake_open">Open</string>
     <string name="task_add_continue">Add another</string>
     <string name="task_added">Added: %1$s</string>
+    <string name="postwake_skip">Skip for today</string>
+    <string name="postwake_skipped">Skipped</string>
+    <string name="postwake_late_row">Running late: %1$s</string>
+    <string name="postwake_beyond_exit">Won\'t fit before you leave</string>
+    <string name="postwake_status_margin">Margin: %1$d min</string>
+    <string name="postwake_status_late">Running late: %1$d min</string>
+    <string name="postwake_status_on_time">On schedule</string>
+    <string name="postwake_congrats">Well done, you\'ve finished everything and you\'re ahead of time!</string>
+    <string name="notif_postwake_late">Running late · leave at %1$s</string>
+    <string name="cd_postwake_beyond">Does not fit before the exit</string>
 </resources>

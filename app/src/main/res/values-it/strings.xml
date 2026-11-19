@@ -257,23 +257,22 @@
     <string name="notif_postwake_margin">%1$d min di margine · esci alle %2$s</string>
     <string name="postwake_title">Prima di uscire</string>
     <string name="postwake_to_exit">fino alle %1$s</string>
-    <string name="postwake_done">Fatta</string>
-    <string name="postwake_next">Prossima</string>
-    <string name="postwake_skipped">Saltata</string>
+    <string name="postwake_done">Fatto</string>
+    <string name="postwake_later">Faccio dopo</string>
+    <string name="postwake_postponed_from">Rimandata · dalle %1$s</string>
     <string name="postwake_left">ancora %1$s</string>
     <string name="postwake_from">dalle %1$s</string>
     <string name="postwake_time_up">È ora di uscire!</string>
-    <string name="postwake_all_done">Fatto tutto</string>
-    <string name="postwake_margin">%1$d min di margine</string>
+    <string name="postwake_all_done">Tutto fatto!</string>
     <string name="postwake_close">Chiudi</string>
     <string name="cd_postwake_ring">Tempo rimasto prima di uscire, un arco per ogni attività</string>
     <string name="settings_postwake">Dopo la sveglia</string>
     <string name="postwake_enable_title">Guidami dopo la sveglia</string>
     <string name="postwake_enable_desc">Le attività della mattina come lista di cose da fare, con il conto alla rovescia fino all\'uscita</string>
     <string name="postwake_ring_title">Anello e lista</string>
-    <string name="postwake_ring_desc">Un anello che si consuma, e attività che sfumano quando il loro tempo finisce</string>
+    <string name="postwake_ring_desc">Un anello che si consuma, con il tempo che ti resta prima di uscire</string>
     <string name="postwake_notify_title">Notifica della prossima cosa</string>
-    <string name="postwake_notify_desc">Mostra sempre l\'attività in corso, con i pulsanti Fatta e Prossima</string>
+    <string name="postwake_notify_desc">Mostra sempre l\'attività in corso, con i pulsanti per segnarla fatta, rimandarla o saltarla</string>
     <string name="postwake_lock_title">Sopra la schermata di blocco</string>
     <string name="postwake_lock_desc">Dopo Spegni, la lista si apre subito, anche con il telefono bloccato</string>
     <string name="postwake_try">Provala (1 min = 5 s)</string>
@@ -285,4 +284,14 @@
     <string name="postwake_open">Apri</string>
     <string name="task_add_continue">Aggiungi altra</string>
     <string name="task_added">Aggiunta: %1$s</string>
+    <string name="postwake_skip">Salta per oggi</string>
+    <string name="postwake_skipped">Saltata</string>
+    <string name="postwake_late_row">In ritardo di %1$s</string>
+    <string name="postwake_beyond_exit">Non entra prima dell\'uscita</string>
+    <string name="postwake_status_margin">Margine: %1$d min</string>
+    <string name="postwake_status_late">In ritardo di %1$d min</string>
+    <string name="postwake_status_on_time">In orario</string>
+    <string name="postwake_congrats">Complimenti, hai finito tutto e sei in anticipo!</string>
+    <string name="notif_postwake_late">In ritardo · esci alle %1$s</string>
+    <string name="cd_postwake_beyond">Non entra prima dell\'uscita</string>
 </resources>
