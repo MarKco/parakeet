@@ -300,4 +300,7 @@
     <string name="notif_postwake_alert_text">Esci con %1$d min di ritardo</string>
     <string name="notif_postwake_title_now">Ora: %1$s</string>
     <string name="notif_postwake_text_next">Poi: %1$s · esci alle %2$s</string>
+    <string name="postwake_callout_gained">Tempo guadagnato! Sei in anticipo di %1$d min</string>
+    <string name="postwake_callout_late">Da qui sei in ritardo</string>
+    <string name="postwake_callout_lead_gone">L\'anticipo è finito: da qui sei in ritardo</string>
 </resources>

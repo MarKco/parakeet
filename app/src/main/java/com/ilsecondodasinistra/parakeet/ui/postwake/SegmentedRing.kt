@@ -50,7 +50,7 @@ val ErodingColor = Color(RoutineColors[1])
  * margin, and a postponed activity's arc travels to the back.
  */
 @Composable
-fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, center: @Composable BoxScope.() -> Unit) {
+fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, dotColor: Color = Color.White, center: @Composable BoxScope.() -> Unit) {
     val arcs = arcsOf(state)
     val animator = remember { ArcAnimator(arcs, state.eventCount) }
     // After this composition: a change of layout caused by the user (an event) starts a slide
@@ -100,7 +100,7 @@ fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, center: @
                     val r = (size.minDimension - 2 * inset) / 2
                     val rad = Math.toRadians((now - 90f).toDouble())
                     drawCircle(
-                        Color.White, radius = stroke * 0.42f,
+                        dotColor, radius = stroke * 0.42f,
                         center = Offset(size.width / 2 + r * cos(rad).toFloat(), size.height / 2 + r * sin(rad).toFloat()),
                     )
                 }

@@ -1,7 +1,19 @@
 package com.ilsecondodasinistra.parakeet.ui.postwake
 
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toDrawable
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.isSystemInDarkTheme
+import android.graphics.Color
+import android.content.IntentFilter
+import android.content.Intent
+import android.content.Context
+import android.content.BroadcastReceiver
+import android.app.KeyguardManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -28,19 +40,30 @@ class PostWakeActivity : ComponentActivity() {
     @Inject lateinit var settings: SettingsRepository
     private val viewModel: PostWakeViewModel by viewModels()
 
+    /** The phone is locked and this screen is above the lock screen: dark, like the alarm. Otherwise the app theme. */
+    private val onLockScreen = mutableStateOf(false)
+    private val userPresent = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) { onLockScreen.value = false }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
-        // The theme window is light: without this a light frame flashes before the dark screen is drawn
-        window.setBackgroundDrawable(ColorDrawable(0xFF080A06.toInt()))
+        onLockScreen.value = isLocked()
         // One tiny read of a local preference: the flag must be set before the window is first shown
         setShowWhenLocked(runBlocking { settings.current().postWake.lockScreen })
 
         setContent {
-            ParakeetTheme(darkTheme = true) {
+            val dark = onLockScreen.value || isSystemInDarkTheme()
+            ParakeetTheme(darkTheme = dark) {
+                val background = MaterialTheme.colorScheme.background.toArgb()
+                SideEffect {
+                    // The theme window is light: without this a light frame flashes before the screen is drawn
+                    window.setBackgroundDrawable((if (onLockScreen.value) LOCK_BACKGROUND else background).toDrawable())
+                    enableEdgeToEdge(
+                        statusBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                        navigationBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                    )
+                }
                 val ui by viewModel.state.collectAsStateWithLifecycle()
                 val timeline = ui.timeline
                 // The service creates the session right after Stop; if none shows up there is nothing to guide
@@ -52,13 +75,32 @@ class PostWakeActivity : ComponentActivity() {
                 }
                 LaunchedEffect(Unit) { viewModel.refresh() }
                 if (timeline != null) {
-                    PostWakeScreen(timeline, onAct = viewModel::act, onClose = ::finish)
+                    PostWakeScreen(timeline, onLockScreen = onLockScreen.value, onAct = viewModel::act, onClose = ::finish)
                 }
             }
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Unlocking while this screen is up: from then on it is an ordinary screen of the app
+        ContextCompat.registerReceiver(this, userPresent, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        onLockScreen.value = isLocked()
+    }
+
+    override fun onStop() {
+        unregisterReceiver(userPresent)
+        super.onStop()
+    }
+
+    private fun isLocked(): Boolean = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+
     private companion object {
         const val NO_SESSION_MILLIS = 2_000L
+        const val LOCK_BACKGROUND = 0xFF080A06.toInt()
     }
 }
