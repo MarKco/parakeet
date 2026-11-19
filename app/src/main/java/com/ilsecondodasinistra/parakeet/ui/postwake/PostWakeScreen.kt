@@ -66,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +75,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -214,18 +216,20 @@ private fun RingHeader(state: TimelineState, callout: Callout?, onLockScreen: Bo
                 .onGloballyPositioned { onRingCenter(it.positionInRoot() + Offset(it.size.width / 2f, it.size.height / 2f)) }
                 .semantics { contentDescription = ringDescription },
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // The inside of the ring: the number never gets wider than this, it shrinks to fit
+            Column(Modifier.fillMaxWidth(0.58f), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (state.exitDue) {
-                    Text(stringResource(R.string.postwake_time_up), style = MaterialTheme.typography.titleLarge, color = accent, textAlign = TextAlign.Center)
+                    FitWidth { Text(stringResource(R.string.postwake_time_up), style = MaterialTheme.typography.titleLarge, color = accent) }
                 } else {
                     // Always the real time to the exit: the ring may show margin, this number never lies
                     LcdDuration(state.remainingToExitMillis, accent)
-                    Text(
-                        stringResource(R.string.postwake_to_exit, exitTime(state)),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = accent.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                    FitWidth(Modifier.padding(top = 6.dp)) {
+                        Text(
+                            stringResource(R.string.postwake_to_exit, exitTime(state)),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = accent.copy(alpha = 0.8f),
+                        )
+                    }
                 }
             }
         }
@@ -436,14 +440,34 @@ private fun LcdDuration(millis: Long, color: Color) {
     }
     // Four digits plus two units must still fit inside the ring
     val size = if (parts.sumOf { it.first.length } >= 4) 52.sp else 64.sp
-    Row {
-        parts.forEachIndexed { index, (digits, unit) ->
-            if (index > 0) Spacer(Modifier.width(8.dp))
-            LcdText(digits, size, Modifier.alignByBaseline(), color)
-            Text(
-                unit, style = MaterialTheme.typography.titleMedium, color = color.copy(alpha = 0.85f),
-                modifier = Modifier.padding(start = 3.dp).alignByBaseline(),
-            )
+    FitWidth {
+        Row {
+            parts.forEachIndexed { index, (digits, unit) ->
+                if (index > 0) Spacer(Modifier.width(8.dp))
+                LcdText(digits, size, Modifier.alignByBaseline(), color)
+                Text(
+                    unit, style = MaterialTheme.typography.titleMedium, color = color.copy(alpha = 0.85f),
+                    modifier = Modifier.padding(start = 3.dp).alignByBaseline(),
+                )
+            }
+        }
+    }
+}
+
+/** Measures [content] at its natural size and, if it is wider than the space it is given, scales it down to fit. */
+@Composable
+private fun FitWidth(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val placeable = measurables.first().measure(Constraints())
+        val scale = if (constraints.hasBoundedWidth && placeable.width > constraints.maxWidth) {
+            constraints.maxWidth.toFloat() / placeable.width
+        } else 1f
+        layout((placeable.width * scale).toInt(), (placeable.height * scale).toInt()) {
+            placeable.placeWithLayer(0, 0) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
         }
     }
 }
