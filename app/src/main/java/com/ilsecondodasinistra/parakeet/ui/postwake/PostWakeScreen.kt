@@ -1,5 +1,6 @@
 package com.ilsecondodasinistra.parakeet.ui.postwake
 
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -52,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,6 +76,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.domain.PostWakeAction
 import com.ilsecondodasinistra.parakeet.domain.StepState
@@ -107,10 +113,17 @@ fun PostWakeScreen(state: TimelineState, onLockScreen: Boolean, onAct: (Long, Po
     var celebrated by rememberSaveable { mutableStateOf(celebrate) }
     var burst by remember { mutableIntStateOf(0) }
     var ringCenter by remember { mutableStateOf(Offset.Zero) }
-    LaunchedEffect(celebrate) {
+    // Celebrations and boxes only when the screen is in front: what happened while away is marked as seen, not replayed
+    // The state is not collected while the screen is away, so what changed meanwhile arrives just after it is back
+    // in front: the first moments after coming back count as "not looking" too.
+    val visibleNow = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+    var settleAt by remember { mutableLongStateOf(0L) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { settleAt = SystemClock.elapsedRealtime() + RESUME_GRACE_MILLIS }
+    val visible = visibleNow && SystemClock.elapsedRealtime() >= settleAt
+    LaunchedEffect(celebrate, visible) {
         if (celebrate && !celebrated) {
             celebrated = true
-            if (animationsOn) burst++
+            if (animationsOn && visible) burst++
         }
     }
     // Two moments explained once, in a box that comes and goes: the margin appears (you are ahead) and the margin
@@ -121,11 +134,14 @@ fun PostWakeScreen(state: TimelineState, onLockScreen: Boolean, onAct: (Long, Po
     // Whether there ever was a lead: "your lead is gone" only makes sense then, otherwise just "from here you are late"
     var hadLead by rememberSaveable { mutableStateOf(state.marginMillis > 0) }
     LaunchedEffect(state.marginMillis > 0) { if (state.marginMillis > 0) hadLead = true }
-    LaunchedEffect(state.marginMillis > 0) {
-        if (state.marginMillis > 0 && !gainedShown) { gainedShown = true; callout = Callout.GAINED }
+    LaunchedEffect(state.marginMillis > 0, visible) {
+        if (state.marginMillis > 0 && !gainedShown) { gainedShown = true; if (visible) callout = Callout.GAINED }
     }
-    LaunchedEffect(state.overflowMillis > 0) {
-        if (state.overflowMillis > 0 && !lateShown) { lateShown = true; callout = if (hadLead) Callout.LEAD_GONE else Callout.LATE }
+    LaunchedEffect(state.overflowMillis > 0, visible) {
+        if (state.overflowMillis > 0 && !lateShown) {
+            lateShown = true
+            if (visible) callout = if (hadLead) Callout.LEAD_GONE else Callout.LATE
+        }
     }
     LaunchedEffect(callout) {
         if (callout != null) {
@@ -236,6 +252,7 @@ private fun RingHeader(state: TimelineState, callout: Callout?, onLockScreen: Bo
 private enum class Callout { GAINED, LEAD_GONE, LATE }
 
 private const val CALLOUT_MILLIS = 4500L
+private const val RESUME_GRACE_MILLIS = 1500L
 
 /**
  * A short explanation next to the ring, on top of it a little: it grows in from the corner, stays a few seconds,
