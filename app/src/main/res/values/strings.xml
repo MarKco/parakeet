@@ -319,4 +319,8 @@
     <string name="postwake_callout_lead_gone">Your lead is gone: from here you\'re running late</string>
     <string name="duration_m_s">%1$d min %2$d s</string>
     <string name="duration_s">%1$d s</string>
+    <string name="buffer_task_name">Time for the unexpected</string>
+    <string name="buffer_hint_title">Add time for the unexpected?</string>
+    <string name="buffer_hint_body">A cushion of 5 minutes that is used up if something runs over, with no alerts.</string>
+    <string name="buffer_hint_action">Add</string>
 </resources>

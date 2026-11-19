@@ -69,6 +69,9 @@ data class DayUi(
     val modified: Boolean get() = override is DayPlan.Custom
 }
 
+/** An activity to create from a list of suggestions: the cushion of the plan is flagged, not named. */
+data class NewTask(val name: String, val minutes: Int, val buffer: Boolean = false)
+
 data class MainUiState(
     val ready: Boolean = false,
     val showOnboarding: Boolean = false,
@@ -83,6 +86,8 @@ data class MainUiState(
     val lastRungDay: LocalDate? = null,
     val clockAlarm: AlarmStatus? = null,
     val showDaysHint: Boolean = false,
+    /** No "time for the unexpected" in the catalog yet: a discreet suggestion under the list (until it is waved away). */
+    val showBufferHint: Boolean = false,
     val notifyOnExit: Boolean = true,
     val exitText: String = "",
     val alarmMode: AlarmMode = AlarmMode.CLOCK,
@@ -113,6 +118,7 @@ sealed interface MainEvent {
 }
 
 private const val RIBBON_DAYS = 56
+private const val DEFAULT_BUFFER_MINUTES = 5
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -186,6 +192,7 @@ class MainViewModel @Inject constructor(
             pausedUntil = paused,
             lastRungDay = lastRung,
             clockAlarm = clockAlarm,
+            showBufferHint = s.onboardingDone && !s.plan.bufferHintDismissed && d.tasks.isNotEmpty() && d.tasks.none { it.buffer },
             showDaysHint = s.planMode == PlanMode.SCHEDULED && !s.plan.hintDismissed && next != null && d.routines.isNotEmpty() && d.routines.all { it.days.isEmpty() },
             notifyOnExit = s.notifyOnExit,
             exitText = s.exitText,
@@ -196,7 +203,7 @@ class MainViewModel @Inject constructor(
             postWake = s.postWake,
             showPostWakeHint = s.alarmMode == AlarmMode.INTERNAL && s.onboardingDone && !s.postWake.enabled &&
                 !s.postWake.hintDismissed && s.postWake.ringCount >= 2 &&
-                (next?.taskIds?.count { id -> d.tasks.any { it.id == id } } ?: 0) >= 2,
+                (next?.taskIds?.count { id -> d.tasks.any { it.id == id && !it.buffer } } ?: 0) >= 2,
             postWakeActive = s.postWake.enabled && s.postWake.ring && (s.postWakeSession?.exitAtMillis ?: 0L) > System.currentTimeMillis(),
             simpleExit = simpleExit,
             simpleTaskIds = simpleIds.filter { id -> d.tasks.any { it.id == id } }.toSet(),
@@ -456,8 +463,8 @@ class MainViewModel @Inject constructor(
     // ---- activity catalog ----------------------------------------------------------------------------
 
     /** New activity: added to the catalog and ticked for the selected day only. */
-    fun addTask(name: String, minutes: Int) = viewModelScope.launch {
-        val id = tasks.add(name, minutes)
+    fun addTask(name: String, minutes: Int, buffer: Boolean = false) = viewModelScope.launch {
+        val id = tasks.add(name, minutes, buffer = buffer)
         if (state.value.planMode == PlanMode.SIMPLE) {
             val r = simpleRoutine()
             plan.saveRoutine(r.copy(taskIds = r.taskIds + id))
@@ -482,6 +489,16 @@ class MainViewModel @Inject constructor(
     fun addCatalogTask(name: String, minutes: Int, onAdded: (Long) -> Unit) = viewModelScope.launch {
         onAdded(tasks.add(name, minutes))
     }
+
+    /** "Time for the unexpected", 5 minutes: from the suggestion under the list. */
+    fun addBuffer() = addTask(context.getString(R.string.buffer_task_name), DEFAULT_BUFFER_MINUTES, buffer = true)
+
+    /** The same, from the routine editor, which then selects it. */
+    fun addCatalogBuffer(onAdded: (Long) -> Unit) = viewModelScope.launch {
+        onAdded(tasks.add(context.getString(R.string.buffer_task_name), DEFAULT_BUFFER_MINUTES, buffer = true))
+    }
+
+    fun dismissBufferHint() = viewModelScope.launch { settings.setBufferHintDismissed() }
 
     private suspend fun afterChange() {
         val next = alarmSync.sync()
@@ -520,7 +537,7 @@ class MainViewModel @Inject constructor(
      */
     fun completeOnboarding(
         exitTime: LocalTime,
-        chosen: List<Pair<String, Int>>,
+        chosen: List<NewTask>,
         scheduled: Boolean,
         days: Set<DayOfWeek>,
         routineName: String,
@@ -529,7 +546,7 @@ class MainViewModel @Inject constructor(
     ) = viewModelScope.launch {
         settings.setAlarmMode(if (internalAlarm && canUseInternalAlarm()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
         settings.setExitTime(exitTime)
-        val ids = if (tasks.count() == 0) chosen.map { (name, minutes) -> tasks.add(name, minutes) }
+        val ids = if (tasks.count() == 0) chosen.map { tasks.add(it.name, it.minutes, buffer = it.buffer) }
         else tasks.tasks.first().filter { it.checked }.map { it.id }
         val id = plan.saveRoutine(
             Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids.toSet(), days = days),
@@ -537,7 +554,7 @@ class MainViewModel @Inject constructor(
         settings.setPlanMode(if (scheduled) PlanMode.SCHEDULED else PlanMode.SIMPLE)
         // Simple mode sets no alarm by itself: the user presses "Set alarm", as before
         if (scheduled && days.isEmpty()) {
-            val total = chosen.sumOf { it.second }
+            val total = chosen.sumOf { it.minutes }
             val first = WakeUpCalculator.plan(exitTime, listOf(Task(name = "", minutes = total, checked = true)), LocalDateTime.now(clock))
             plan.setDayPlan(DayPlan.UseRoutine(first.exitAt.toLocalDate(), id))
         }

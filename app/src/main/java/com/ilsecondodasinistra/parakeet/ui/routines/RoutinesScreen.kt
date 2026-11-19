@@ -24,6 +24,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -73,6 +74,7 @@ import com.ilsecondodasinistra.parakeet.ui.TimePickerDialog
 import com.ilsecondodasinistra.parakeet.ui.formatDuration
 import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainUiState
+import com.ilsecondodasinistra.parakeet.ui.main.BufferHint
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
 import com.ilsecondodasinistra.parakeet.ui.main.letter
@@ -357,6 +359,12 @@ fun RoutineEditorScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(checked = checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+                        if (task.buffer) {
+                            Icon(
+                                Icons.Outlined.HourglassBottom, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
+                            )
+                        }
                         Text(task.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -370,6 +378,14 @@ fun RoutineEditorScreen(
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.add_task))
+                    }
+                }
+                if (state.showBufferHint) {
+                    item(key = "bufferHint") {
+                        BufferHint(
+                            onAdd = { viewModel.addCatalogBuffer { id -> taskIds = taskIds + id } },
+                            onDismiss = viewModel::dismissBufferHint,
+                        )
                     }
                 }
                 item {

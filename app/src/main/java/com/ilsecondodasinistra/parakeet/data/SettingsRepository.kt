@@ -55,6 +55,7 @@ data class PlanPrefs(
     val eveningSummary: Boolean = false, // "tomorrow: alarm 6:45" the evening before
     val eveningMinute: Int = 21 * 60 + 30,
     val hintDismissed: Boolean = false,  // "ring on other days too?" hint
+    val bufferHintDismissed: Boolean = false, // "add time for the unexpected?" suggestion
 )
 
 /**
@@ -130,6 +131,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val eveningSummary = booleanPreferencesKey("evening_summary")
         val eveningMinute = intPreferencesKey("evening_minute")
         val hintDismissed = booleanPreferencesKey("plan_hint_dismissed")
+        val bufferHintDismissed = booleanPreferencesKey("buffer_hint_dismissed")
         val planMigrated = booleanPreferencesKey("plan_migrated")
         val planMode = stringPreferencesKey("plan_mode")
         val pwEnabled = booleanPreferencesKey("postwake_enabled")
@@ -180,6 +182,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 eveningSummary = this[Keys.eveningSummary] ?: false,
                 eveningMinute = this[Keys.eveningMinute] ?: (21 * 60 + 30),
                 hintDismissed = this[Keys.hintDismissed] ?: false,
+                bufferHintDismissed = this[Keys.bufferHintDismissed] ?: false,
             ),
             planMode = this[Keys.planMode]?.let { runCatching { PlanMode.valueOf(it) }.getOrNull() } ?: PlanMode.SIMPLE,
             postWake = PostWakePrefs(
@@ -271,6 +274,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setEveningMinute(value: Int) = context.dataStore.edit { it[Keys.eveningMinute] = value }
 
     suspend fun setHintDismissed() = context.dataStore.edit { it[Keys.hintDismissed] = true }
+
+    suspend fun setBufferHintDismissed() = context.dataStore.edit { it[Keys.bufferHintDismissed] = true }
 
     suspend fun setPlanMode(mode: PlanMode) = context.dataStore.edit { it[Keys.planMode] = mode.name }
 

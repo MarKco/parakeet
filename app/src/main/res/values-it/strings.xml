@@ -305,4 +305,8 @@
     <string name="postwake_callout_lead_gone">L\'anticipo è finito: da qui sei in ritardo</string>
     <string name="duration_m_s">%1$d min %2$d s</string>
     <string name="duration_s">%1$d s</string>
+    <string name="buffer_task_name">Tempo per gli imprevisti</string>
+    <string name="buffer_hint_title">Aggiungi tempo per gli imprevisti?</string>
+    <string name="buffer_hint_body">Un cuscinetto di 5 minuti che si consuma se qualcosa sfora, senza avvisi.</string>
+    <string name="buffer_hint_action">Aggiungi</string>
 </resources>

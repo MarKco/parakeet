@@ -131,13 +131,14 @@ fun PostWakeScreen(state: TimelineState, onLockScreen: Boolean, onAct: (Long, Po
     // Two moments explained once, in a box that comes and goes: the margin appears (you are ahead) and the margin
     // is gone (you are late). Not when the screen is opened with the margin already there.
     var callout by remember { mutableStateOf<Callout?>(null) }
-    var gainedShown by rememberSaveable { mutableStateOf(state.marginMillis > 0) }
+    // "Gained" is what is above the cushion planned from the start, not the cushion itself
+    var gainedShown by rememberSaveable { mutableStateOf(state.gainedMillis > 0) }
     var lateShown by rememberSaveable { mutableStateOf(state.overflowMillis > 0) }
     // Whether there ever was a lead: "your lead is gone" only makes sense then, otherwise just "from here you are late"
     var hadLead by rememberSaveable { mutableStateOf(state.marginMillis > 0) }
     LaunchedEffect(state.marginMillis > 0) { if (state.marginMillis > 0) hadLead = true }
-    LaunchedEffect(state.marginMillis > 0, visible) {
-        if (state.marginMillis > 0 && !gainedShown) { gainedShown = true; if (visible) callout = Callout.GAINED }
+    LaunchedEffect(state.gainedMillis > 0, visible) {
+        if (state.gainedMillis > 0 && !gainedShown) { gainedShown = true; if (visible) callout = Callout.GAINED }
     }
     LaunchedEffect(state.overflowMillis > 0, visible) {
         if (state.overflowMillis > 0 && !lateShown) {

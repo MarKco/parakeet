@@ -316,6 +316,9 @@ fun MainScreen(
                 Text(stringResource(R.string.add_task), style = MaterialTheme.typography.titleSmall)
             }
         }
+        if (state.showBufferHint) {
+            item(key = "bufferHint") { BufferHint(onAdd = viewModel::addBuffer, onDismiss = viewModel::dismissBufferHint) }
+        }
         }
         val openPostWake = { context.startActivity(Intent(context, PostWakeActivity::class.java)) }
         // "After the alarm": the one-off proposal, and the way back into a morning in progress
@@ -699,6 +702,13 @@ private fun TaskRow(task: Task, shape: RoundedCornerShape, onToggle: (Task) -> U
                 ) {
                     Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                 }
+            }
+            // The cushion of the plan is not an activity: a small hourglass tells it apart
+            if (task.buffer) {
+                Icon(
+                    Icons.Outlined.HourglassBottom, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
+                )
             }
             Text(
                 task.name,

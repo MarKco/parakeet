@@ -420,6 +420,25 @@ fun DaysHint(onChoose: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
+/** A discreet suggestion under the list of activities: a cushion of time for the unexpected. Can be waved away for good. */
+@Composable
+fun BufferHint(onAdd: () -> Unit, onDismiss: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+                Text(stringResource(R.string.buffer_hint_title), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.buffer_hint_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.buffer_hint_action)) }
+            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cd_close)) }
+        }
+    }
+}
+
 /** One-off proposal of "After the alarm", after the second real ring. "Try it" switches it on and rehearses. */
 @Composable
 fun PostWakeHint(onTry: () -> Unit, onDismiss: () -> Unit) {

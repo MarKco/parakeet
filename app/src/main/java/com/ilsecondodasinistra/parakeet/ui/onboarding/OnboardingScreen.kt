@@ -86,6 +86,7 @@ import kotlinx.coroutines.delay
 import com.ilsecondodasinistra.parakeet.ui.ChoiceCard
 import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
+import com.ilsecondodasinistra.parakeet.ui.main.NewTask
 import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
 import com.ilsecondodasinistra.parakeet.ui.dayLabel
 import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
@@ -105,15 +106,17 @@ import java.time.LocalTime
 @Composable
 fun OnboardingScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
-    val names = stringArrayResource(R.array.suggestion_names)
-    val defaultMinutes = integerArrayResource(R.array.suggestion_minutes)
+    // The suggestions, then the cushion: "time for the unexpected", the last of the list, ticked from the start
+    val names = stringArrayResource(R.array.suggestion_names).toList() + stringResource(R.string.buffer_task_name)
+    val defaultMinutes = integerArrayResource(R.array.suggestion_minutes).toList() + DEFAULT_BUFFER_MINUTES
+    val bufferIndex = names.lastIndex
 
     var step by rememberSaveable { mutableIntStateOf(0) }
     var welcomeBounce by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { delay(600); welcomeBounce++ }
     val timeState = rememberTimePickerState(8, 0, true)
-    var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList())) }   // pre-selected suggestions
-    var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes.toList())) }
+    var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList() + bufferIndex)) }   // pre-selected suggestions
+    var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes)) }
     var scheduled by rememberSaveable { mutableStateOf(false) }          // simple mode by default
     var days by rememberSaveable { mutableStateOf(ArrayList<Int>()) }   // empty = only the next morning
     var notify by rememberSaveable { mutableStateOf(true) }
@@ -126,10 +129,10 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     }
 
     val exitTime = LocalTime.of(timeState.hour, timeState.minute)
-    val chosen = selected.sorted().map { names[it] to minutes[it] }
+    val chosen = selected.sorted().map { NewTask(names[it], minutes[it], buffer = it == bufferIndex) }
     val preview = WakeUpCalculator.plan(
         exitTime,
-        chosen.map { Task(name = it.first, minutes = it.second, checked = true) },
+        chosen.map { Task(name = it.name, minutes = it.minutes, checked = true, buffer = it.buffer) },
         LocalDateTime.now(),
     )
 
@@ -404,3 +407,5 @@ private fun StepDots(step: Int, count: Int) {
 private fun hasNotificationPermission(context: android.content.Context): Boolean =
     Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+private const val DEFAULT_BUFFER_MINUTES = 5
