@@ -9,12 +9,14 @@ import com.ilsecondodasinistra.parakeet.alarm.AlarmSync
 import com.ilsecondodasinistra.parakeet.alarm.ExitNotificationScheduler
 import com.ilsecondodasinistra.parakeet.alarm.InternalAlarmScheduler
 import com.ilsecondodasinistra.parakeet.alarm.Notifications
+import com.ilsecondodasinistra.parakeet.alarm.PostWake
 import com.ilsecondodasinistra.parakeet.data.ActiveAlarm
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.LegacyMigration
 import com.ilsecondodasinistra.parakeet.data.PlanMode
 import com.ilsecondodasinistra.parakeet.data.PlanPrefs
 import com.ilsecondodasinistra.parakeet.data.PlanRepository
+import com.ilsecondodasinistra.parakeet.data.PostWakePrefs
 import com.ilsecondodasinistra.parakeet.data.RingingPrefs
 import com.ilsecondodasinistra.parakeet.data.Settings
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
@@ -87,6 +89,11 @@ data class MainUiState(
     val ringing: RingingPrefs = RingingPrefs(),
     val planPrefs: PlanPrefs = PlanPrefs(),
     val planMode: PlanMode = PlanMode.SIMPLE,
+    val postWake: PostWakePrefs = PostWakePrefs(),
+    /** One-off proposal of "After the alarm": after the second real ring, only if it would have something to show. */
+    val showPostWakeHint: Boolean = false,
+    /** A morning is in progress (feature on, exit not reached yet): the card that reopens the ring + list. */
+    val postWakeActive: Boolean = false,
     // Simple mode: the first routine is "the" setup; the plan is what the "Set alarm" button would arm
     val simpleExit: LocalTime? = null,
     val simpleTaskIds: Set<Long> = emptySet(),
@@ -118,6 +125,7 @@ class MainViewModel @Inject constructor(
     private val internalAlarm: InternalAlarmScheduler,
     private val exitNotifications: ExitNotificationScheduler,
     private val alarmSync: AlarmSync,
+    private val postWake: PostWake,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -185,6 +193,11 @@ class MainViewModel @Inject constructor(
             ringing = s.ringing,
             planPrefs = s.plan,
             planMode = s.planMode,
+            postWake = s.postWake,
+            showPostWakeHint = s.alarmMode == AlarmMode.INTERNAL && s.onboardingDone && !s.postWake.enabled &&
+                !s.postWake.hintDismissed && s.postWake.ringCount >= 2 &&
+                (next?.taskIds?.count { id -> d.tasks.any { it.id == id } } ?: 0) >= 2,
+            postWakeActive = s.postWake.enabled && s.postWake.ring && (s.postWakeSession?.exitAtMillis ?: 0L) > System.currentTimeMillis(),
             simpleExit = simpleExit,
             simpleTaskIds = simpleIds.filter { id -> d.tasks.any { it.id == id } }.toSet(),
             simplePlan = simplePlan,
@@ -404,6 +417,29 @@ class MainViewModel @Inject constructor(
     suspend fun nextRoutineColor(): Int = plan.nextColor()
 
     fun dismissDaysHint() = viewModelScope.launch { settings.setHintDismissed() }
+
+    // ---- after the alarm (5.2) -----------------------------------------------------------------------
+
+    fun setPostWakeEnabled(enabled: Boolean) = viewModelScope.launch {
+        settings.updatePostWake { it.copy(enabled = enabled) }
+        if (!enabled) postWake.clear()
+    }
+
+    fun updatePostWake(transform: (PostWakePrefs) -> PostWakePrefs) = viewModelScope.launch {
+        settings.updatePostWake(transform)
+        postWake.refresh() // e.g. notification switched off while a morning is in progress
+    }
+
+    /** A rehearsal at 1 minute = 5 seconds. [onResult] is false when the plan has fewer than two activities. */
+    fun tryPostWake(onResult: (Boolean) -> Unit) = viewModelScope.launch { onResult(postWake.startDemo()) }
+
+    /** "Try it" on the proposal card: switch everything on, then rehearse. */
+    fun acceptPostWakeHint(onResult: (Boolean) -> Unit) = viewModelScope.launch {
+        settings.updatePostWake { it.copy(enabled = true, ring = true, notify = true, lockScreen = true) }
+        onResult(postWake.startDemo())
+    }
+
+    fun dismissPostWakeHint() = viewModelScope.launch { settings.setPostWakeHintDismissed() }
 
     // ---- pause -------------------------------------------------------------------------------------
 

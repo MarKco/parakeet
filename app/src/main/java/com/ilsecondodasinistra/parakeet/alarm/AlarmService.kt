@@ -49,6 +49,7 @@ class AlarmService : Service() {
 
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scheduler: InternalAlarmScheduler
+    @Inject lateinit var postWake: PostWake
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var player: MediaPlayer? = null
@@ -60,7 +61,10 @@ class AlarmService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> { stopRinging(); return START_NOT_STICKY }
+            ACTION_STOP -> {
+                // Only the user's Stop starts the morning guide: not a snooze, not the 10-minute auto-stop
+                stopRinging(); postWake.beginAsync(); return START_NOT_STICKY
+            }
             ACTION_SNOOZE -> { snooze(); return START_NOT_STICKY }
         }
         if (AlarmState.ringing.value != null) return START_NOT_STICKY // already ringing

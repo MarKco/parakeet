@@ -88,6 +88,12 @@ class AlarmSync @Inject constructor(
     private suspend fun routinesFor(simple: Boolean) =
         plan.currentRoutines().let { list -> if (simple) list.map { it.copy(days = emptySet()) } else list }
 
+    /** What [date] looked like in the plan (routine, activities, exit): used after the alarm rang. */
+    suspend fun dayFor(date: LocalDate): DaySchedule {
+        val simple = settings.current().planMode == PlanMode.SIMPLE
+        return AlarmPlanner.day(date, routinesFor(simple), plan.currentOverrides(), tasks.tasks.first())
+    }
+
     suspend fun sync(): DaySchedule? = mutex.withLock {
         // An update from 5.0 may first run here (boot, time change): convert its setup before computing
         plan.migrateFromSingleSetupIfNeeded(context.getString(R.string.routine_default_name))
@@ -137,6 +143,9 @@ class AlarmSync @Inject constructor(
     /** Called by [AlarmReceiver] when the armed wake-up rings: that date is done, arm the following one. */
     suspend fun onRang() {
         settings.current().plan.armedDay?.let { settings.setLastRungDay(it) }
+        settings.incrementRingCount()
+        // A new morning starts: yesterday's guide must never show again if today has nothing to guide
+        settings.clearPostWakeSession()
         NotificationManagerCompat.from(context).cancel(NOTIF_PRE_ALARM)
         sync()
     }
@@ -153,7 +162,7 @@ class AlarmSync @Inject constructor(
 
     private fun schedule(action: String, atMillis: Long, date: LocalDate) {
         val pi = pending(action, date)
-        if (alarmManager.canScheduleExactAlarms()) alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
+        if (alarmManager.canScheduleExact()) alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
         else alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
     }
 

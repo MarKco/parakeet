@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ilsecondodasinistra.parakeet.domain.PostWakeEvent
+import com.ilsecondodasinistra.parakeet.domain.PostWakeTimeline
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -55,6 +57,33 @@ data class PlanPrefs(
     val hintDismissed: Boolean = false,  // "ring on other days too?" hint
 )
 
+/**
+ * "After the alarm" (5.2). Off until the user opts in. [ring] = the ring + list screen, [notify] = the
+ * "next thing to do" notification, [lockScreen] = open the screen over the lock screen right after Stop
+ * (needs [ring]). [ringCount] counts real rings, to offer the feature once after the second one.
+ */
+data class PostWakePrefs(
+    val enabled: Boolean = false,
+    val ring: Boolean = true,
+    val notify: Boolean = true,
+    val lockScreen: Boolean = true,
+    val ringCount: Int = 0,
+    val hintDismissed: Boolean = false,
+)
+
+/**
+ * The morning in progress: snapshot taken at Stop, so editing a routine afterwards doesn't move the
+ * timeline. [msPerMinute] is 60 000 except in the demo.
+ */
+data class PostWakeSession(
+    val day: Long,
+    val wakeAtMillis: Long,
+    val exitAtMillis: Long,
+    val taskIds: List<Long>,
+    val msPerMinute: Long,
+    val events: List<PostWakeEvent>,
+)
+
 data class Settings(
     val exitTime: LocalTime?,           // null until the user chooses one
     val onboardingDone: Boolean,
@@ -66,6 +95,8 @@ data class Settings(
     val ringing: RingingPrefs,
     val plan: PlanPrefs = PlanPrefs(),
     val planMode: PlanMode = PlanMode.SIMPLE, // upgraders keep the screen they know
+    val postWake: PostWakePrefs = PostWakePrefs(),
+    val postWakeSession: PostWakeSession? = null,
 )
 
 @Singleton
@@ -99,6 +130,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val hintDismissed = booleanPreferencesKey("plan_hint_dismissed")
         val planMigrated = booleanPreferencesKey("plan_migrated")
         val planMode = stringPreferencesKey("plan_mode")
+        val pwEnabled = booleanPreferencesKey("postwake_enabled")
+        val pwRing = booleanPreferencesKey("postwake_ring")
+        val pwNotify = booleanPreferencesKey("postwake_notify")
+        val pwLockScreen = booleanPreferencesKey("postwake_lock_screen")
+        val pwRingCount = intPreferencesKey("postwake_ring_count")
+        val pwHintDismissed = booleanPreferencesKey("postwake_hint_dismissed")
+        val pwDay = longPreferencesKey("postwake_day")
+        val pwWake = longPreferencesKey("postwake_wake_at")
+        val pwExit = longPreferencesKey("postwake_exit_at")
+        val pwTaskIds = stringPreferencesKey("postwake_task_ids")
+        val pwScale = longPreferencesKey("postwake_ms_per_minute")
+        val pwEvents = stringPreferencesKey("postwake_events")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -136,6 +179,29 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
                 hintDismissed = this[Keys.hintDismissed] ?: false,
             ),
             planMode = this[Keys.planMode]?.let { runCatching { PlanMode.valueOf(it) }.getOrNull() } ?: PlanMode.SIMPLE,
+            postWake = PostWakePrefs(
+                enabled = this[Keys.pwEnabled] ?: false,
+                ring = this[Keys.pwRing] ?: true,
+                notify = this[Keys.pwNotify] ?: true,
+                lockScreen = this[Keys.pwLockScreen] ?: true,
+                ringCount = this[Keys.pwRingCount] ?: 0,
+                hintDismissed = this[Keys.pwHintDismissed] ?: false,
+            ),
+            postWakeSession = toPostWakeSession(),
+        )
+    }
+
+    private fun Preferences.toPostWakeSession(): PostWakeSession? {
+        val day = this[Keys.pwDay] ?: return null
+        val wake = this[Keys.pwWake] ?: return null
+        val exit = this[Keys.pwExit] ?: return null
+        return PostWakeSession(
+            day = day,
+            wakeAtMillis = wake,
+            exitAtMillis = exit,
+            taskIds = this[Keys.pwTaskIds].orEmpty().split(',').mapNotNull { it.toLongOrNull() },
+            msPerMinute = this[Keys.pwScale] ?: PostWakeTimeline.MINUTE_MILLIS,
+            events = PostWakeTimeline.decode(this[Keys.pwEvents]),
         )
     }
 
@@ -203,6 +269,49 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setHintDismissed() = context.dataStore.edit { it[Keys.hintDismissed] = true }
 
     suspend fun setPlanMode(mode: PlanMode) = context.dataStore.edit { it[Keys.planMode] = mode.name }
+
+    suspend fun updatePostWake(transform: (PostWakePrefs) -> PostWakePrefs) = context.dataStore.edit {
+        val new = transform(it.toSettings().postWake)
+        it[Keys.pwEnabled] = new.enabled
+        it[Keys.pwRing] = new.ring
+        it[Keys.pwNotify] = new.notify
+        it[Keys.pwLockScreen] = new.lockScreen
+        it[Keys.pwRingCount] = new.ringCount
+        it[Keys.pwHintDismissed] = new.hintDismissed
+    }
+
+    suspend fun startPostWakeSession(session: PostWakeSession) = context.dataStore.edit {
+        it[Keys.pwDay] = session.day
+        it[Keys.pwWake] = session.wakeAtMillis
+        it[Keys.pwExit] = session.exitAtMillis
+        it[Keys.pwTaskIds] = session.taskIds.joinToString(",")
+        it[Keys.pwScale] = session.msPerMinute
+        it[Keys.pwEvents] = PostWakeTimeline.encode(session.events)
+    }
+
+    /** Atomic read-modify-write of the event log: two quick taps never lose one. Returns the new session. */
+    suspend fun appendPostWakeEvent(event: PostWakeEvent): PostWakeSession? {
+        var result: PostWakeSession? = null
+        context.dataStore.edit {
+            val session = it.toPostWakeSession() ?: return@edit
+            val updated = session.copy(events = session.events + event)
+            it[Keys.pwEvents] = PostWakeTimeline.encode(updated.events)
+            result = updated
+        }
+        return result
+    }
+
+    suspend fun clearPostWakeSession() = context.dataStore.edit {
+        it.remove(Keys.pwDay); it.remove(Keys.pwWake); it.remove(Keys.pwExit)
+        it.remove(Keys.pwTaskIds); it.remove(Keys.pwScale); it.remove(Keys.pwEvents)
+    }
+
+    /** Counts a real ring (not a test, not a snooze) to time the one-off proposal. */
+    suspend fun incrementRingCount() = context.dataStore.edit {
+        it[Keys.pwRingCount] = (it[Keys.pwRingCount] ?: 0) + 1
+    }
+
+    suspend fun setPostWakeHintDismissed() = context.dataStore.edit { it[Keys.pwHintDismissed] = true }
 
     suspend fun isPlanMigrated(): Boolean = context.dataStore.data.first()[Keys.planMigrated] ?: false
 

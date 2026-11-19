@@ -58,6 +58,7 @@ data class DaySchedule(
     val totalMinutes: Int,
     val oneTime: Boolean,           // comes from a DayPlan, not from the weekly rule
     val skipped: Boolean,           // a weekly alarm exists but is skipped (override or pause)
+    val taskIds: Set<Long> = emptySet(), // activities of that day (routine's, or the tweaked ones)
 ) {
     val rings: Boolean get() = wakeAt != null
 }
@@ -81,13 +82,13 @@ object AlarmPlanner {
         return when (override) {
             is DayPlan.Skip -> DaySchedule(date, weekly, null, null, 0, oneTime = true, skipped = true)
             is DayPlan.UseRoutine -> routines.firstOrNull { it.id == override.routineId }
-                ?.let { build(date, it, it.exitTime, minutesOf(it.taskIds), oneTime = true) }
+                ?.let { build(date, it, it.exitTime, it.taskIds, minutesOf(it.taskIds), oneTime = true) }
                 ?: DaySchedule(date, null, null, null, 0, oneTime = true, skipped = false)
             is DayPlan.Custom -> build(
                 date, routines.firstOrNull { it.id == override.routineId },
-                override.exitTime, minutesOf(override.taskIds), oneTime = true,
+                override.exitTime, override.taskIds, minutesOf(override.taskIds), oneTime = true,
             )
-            null -> weekly?.let { build(date, it, it.exitTime, minutesOf(it.taskIds), oneTime = false) }
+            null -> weekly?.let { build(date, it, it.exitTime, it.taskIds, minutesOf(it.taskIds), oneTime = false) }
                 ?: DaySchedule(date, null, null, null, 0, oneTime = false, skipped = false)
         }
     }
@@ -132,8 +133,8 @@ object AlarmPlanner {
         else -> fallback
     }
 
-    private fun build(date: LocalDate, routine: Routine?, exit: LocalTime, total: Int, oneTime: Boolean): DaySchedule {
+    private fun build(date: LocalDate, routine: Routine?, exit: LocalTime, taskIds: Set<Long>, total: Int, oneTime: Boolean): DaySchedule {
         val exitAt = date.atTime(exit.withSecond(0).withNano(0))
-        return DaySchedule(date, routine, exitAt, exitAt.minusMinutes(total.toLong()), total, oneTime, skipped = false)
+        return DaySchedule(date, routine, exitAt, exitAt.minusMinutes(total.toLong()), total, oneTime, skipped = false, taskIds = taskIds)
     }
 }

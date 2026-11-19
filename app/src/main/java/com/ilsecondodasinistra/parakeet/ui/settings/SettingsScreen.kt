@@ -19,6 +19,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.OutlinedButton
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -184,7 +186,10 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                 }
             }
 
-            if (state.alarmMode == com.ilsecondodasinistra.parakeet.data.AlarmMode.INTERNAL) RemindersSection(state, viewModel)
+            if (state.alarmMode == com.ilsecondodasinistra.parakeet.data.AlarmMode.INTERNAL) {
+                RemindersSection(state, viewModel)
+                PostWakeSection(state, viewModel)
+            }
         }
         }
     }
@@ -305,6 +310,71 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
     }
 }
 
+/**
+ * "After the alarm": the day's activities as a guided list until the exit. Off by default; the master switch
+ * turns on the three parts, each of which can be switched off on its own. "Over the lock screen" needs the
+ * ring + list screen, so it is dimmed without it.
+ */
+@Composable
+private fun PostWakeSection(state: MainUiState, viewModel: MainViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = state.postWake
+    Text(
+        stringResource(R.string.settings_postwake),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+    )
+    SettingsCard {
+        Column {
+            SwitchRow(
+                title = stringResource(R.string.postwake_enable_title),
+                description = stringResource(R.string.postwake_enable_desc),
+                checked = prefs.enabled,
+                onChange = viewModel::setPostWakeEnabled,
+            )
+            if (prefs.enabled) {
+                val divider = @Composable {
+                    androidx.compose.material3.HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                divider()
+                SwitchRow(
+                    title = stringResource(R.string.postwake_ring_title),
+                    description = stringResource(R.string.postwake_ring_desc),
+                    checked = prefs.ring,
+                    onChange = { on -> viewModel.updatePostWake { it.copy(ring = on) } },
+                )
+                divider()
+                SwitchRow(
+                    title = stringResource(R.string.postwake_lock_title),
+                    description = stringResource(R.string.postwake_lock_desc),
+                    checked = prefs.lockScreen && prefs.ring,
+                    enabled = prefs.ring,
+                    onChange = { on -> viewModel.updatePostWake { it.copy(lockScreen = on) } },
+                )
+                divider()
+                SwitchRow(
+                    title = stringResource(R.string.postwake_notify_title),
+                    description = stringResource(R.string.postwake_notify_desc),
+                    checked = prefs.notify,
+                    onChange = { on -> viewModel.updatePostWake { it.copy(notify = on) } },
+                )
+            }
+        }
+    }
+    if (prefs.enabled) {
+        OutlinedButton(
+            onClick = {
+                viewModel.tryPostWake { ok ->
+                    if (ok) context.startActivity(android.content.Intent(context, com.ilsecondodasinistra.parakeet.ui.postwake.PostWakeActivity::class.java))
+                    else Toast.makeText(context, R.string.postwake_try_failed, Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        ) { Text(stringResource(R.string.postwake_try)) }
+    }
+}
+
 private val PreAlarmOffsets = listOf(15, 30, 60, 90, 120, 180)
 
 /** "30 min", "1 h", "1 h 30 min". */
@@ -348,10 +418,11 @@ private fun ValueRow(
 }
 
 @Composable
-private fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
         Modifier
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
+            .alpha(if (enabled) 1f else 0.5f)
             .heightIn(min = 72.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -361,7 +432,7 @@ private fun SwitchRow(title: String, description: String, checked: Boolean, onCh
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(16.dp))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 

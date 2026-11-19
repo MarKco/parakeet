@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.widget.Toast
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -106,6 +107,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -115,6 +117,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ilsecondodasinistra.parakeet.R
+import com.ilsecondodasinistra.parakeet.ui.postwake.PostWakeActivity
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.PlanMode
 import com.ilsecondodasinistra.parakeet.domain.DaySchedule
@@ -158,6 +161,7 @@ fun MainScreen(
 ) {
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val resources = LocalResources.current
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showRoutineSheet by rememberSaveable { mutableStateOf(false) }
@@ -203,16 +207,16 @@ fun MainScreen(
                 }
                 is MainEvent.AlarmSentToClock -> {
                     iconTrigger++
-                    snackbar.showSnackbar(context.getString(R.string.clock_sent, event.wakeAt.lcd()), duration = SnackbarDuration.Short)
+                    snackbar.showSnackbar(resources.getString(R.string.clock_sent, event.wakeAt.lcd()), duration = SnackbarDuration.Short)
                 }
-                MainEvent.NoClockApp -> snackbar.showSnackbar(context.getString(R.string.alarm_no_clock_app))
-                MainEvent.NeedsExactAlarm -> snackbar.showSnackbar(context.getString(R.string.mode_needs_permission))
-                MainEvent.AlarmCancelled -> snackbar.showSnackbar(context.getString(R.string.alarm_cancelled))
+                MainEvent.NoClockApp -> snackbar.showSnackbar(resources.getString(R.string.alarm_no_clock_app))
+                MainEvent.NeedsExactAlarm -> snackbar.showSnackbar(resources.getString(R.string.mode_needs_permission))
+                MainEvent.AlarmCancelled -> snackbar.showSnackbar(resources.getString(R.string.alarm_cancelled))
                 is MainEvent.CreateRoutineFor -> onEditRoutine(0L, event.date)
                 is MainEvent.TaskRemoved -> {
                     val result = snackbar.showSnackbar(
-                        message = context.getString(R.string.task_deleted, event.task.name),
-                        actionLabel = context.getString(R.string.undo),
+                        message = resources.getString(R.string.task_deleted, event.task.name),
+                        actionLabel = resources.getString(R.string.undo),
                         duration = SnackbarDuration.Short,
                     )
                     if (result == SnackbarResult.ActionPerformed) viewModel.restoreTask(event.task)
@@ -313,6 +317,21 @@ fun MainScreen(
             }
         }
         }
+        val openPostWake = { context.startActivity(Intent(context, PostWakeActivity::class.java)) }
+        // "After the alarm": the one-off proposal, and the way back into a morning in progress
+        val postWakeCards: @Composable () -> Unit = {
+            if (state.showPostWakeHint) {
+                PostWakeHint(
+                    onTry = {
+                        viewModel.acceptPostWakeHint { ok ->
+                            if (ok) openPostWake() else Toast.makeText(context, R.string.postwake_try_failed, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onDismiss = viewModel::dismissPostWakeHint,
+                )
+            }
+            if (state.postWakeActive) PostWakeActiveCard(onOpen = openPostWake)
+        }
         val overview: @Composable () -> Unit = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 NextAlarmPanel(state, onResume = viewModel::resume)
@@ -329,6 +348,7 @@ fun MainScreen(
                     val r = state.next?.routine
                     DaysHint(onChoose = { if (r != null) onEditRoutine(r.id, null) else onOpenRoutines() }, onDismiss = viewModel::dismissDaysHint)
                 }
+                postWakeCards()
                 state.clockAlarm?.let { ClockStatusCard(it, viewModel::cancelClockAlarm) }
                 if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) NotificationsWarning(onAllow = requestNotifications)
             }
@@ -343,6 +363,7 @@ fun MainScreen(
                 if (armedWake != null && armedExit != null) {
                     SimpleAlarmStatus(armedWake, armedExit, state.now, onCancel = viewModel::cancelSimpleAlarm)
                 }
+                postWakeCards()
                 state.clockAlarm?.let { ClockStatusCard(it, viewModel::cancelClockAlarm) }
                 if (state.alarmMode == AlarmMode.INTERNAL && !notificationsOn) NotificationsWarning(onAllow = requestNotifications)
             }

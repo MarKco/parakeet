@@ -1,6 +1,7 @@
 package com.ilsecondodasinistra.parakeet.ui.alarm
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -42,9 +43,11 @@ import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.alarm.AlarmService
 import com.ilsecondodasinistra.parakeet.alarm.AlarmState
 import com.ilsecondodasinistra.parakeet.data.Challenge
+import com.ilsecondodasinistra.parakeet.data.PostWakePrefs
 import com.ilsecondodasinistra.parakeet.data.RingingPrefs
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
 import com.ilsecondodasinistra.parakeet.ui.LcdText
+import com.ilsecondodasinistra.parakeet.ui.postwake.PostWakeActivity
 import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetDarker
 import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetLime
 import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetTheme
@@ -74,8 +77,10 @@ class AlarmActivity : ComponentActivity() {
         setContent {
             ParakeetTheme(darkTheme = true) {
                 val ringing by AlarmState.ringing.collectAsStateWithLifecycle()
-                val prefs by settings.settings.map { it.ringing }
+                val prefs by remember { settings.settings.map { it.ringing } }
                     .collectAsStateWithLifecycle(RingingPrefs())
+                val postWake by remember { settings.settings.map { it.postWake } }
+                    .collectAsStateWithLifecycle(PostWakePrefs())
 
                 // The service sets the state right after starting; if it never does, there is nothing to show
                 var seen by remember { mutableStateOf(false) }
@@ -92,7 +97,14 @@ class AlarmActivity : ComponentActivity() {
                     AlarmScreen(
                         prefs = prefs,
                         ringingSince = ring.startedAtMillis,
-                        onDismiss = { AlarmService.stop(this) },
+                        onDismiss = {
+                            AlarmService.stop(this)
+                            // "After the alarm" over the lock screen: from here, while our window is in front, no
+                            // special permission is needed. The screen closes itself if the service starts no session.
+                            if (postWake.enabled && postWake.ring && postWake.lockScreen) {
+                                startActivity(Intent(this, PostWakeActivity::class.java))
+                            }
+                        },
                         onSnooze = { AlarmService.snooze(this) },
                     )
                 }

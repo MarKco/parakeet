@@ -27,7 +27,7 @@ class InternalAlarmScheduler @Inject constructor(
 
     /** Arms the alarm for [atMillis]; used for the wake-up time, for snooze and for the "test alarm". */
     fun setAt(atMillis: Long, snooze: Boolean = false, test: Boolean = false): Boolean {
-        if (!alarmManager.canScheduleExactAlarms()) return false
+        if (!alarmManager.canScheduleExact()) return false
         val showApp = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

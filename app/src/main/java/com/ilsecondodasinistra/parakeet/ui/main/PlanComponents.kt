@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -254,7 +255,7 @@ private fun DayCell(day: DaySchedule, selected: Boolean, today: Boolean, paused:
     val shape = RoundedCornerShape(18.dp)
     val outline = MaterialTheme.colorScheme.onSurface
     val dashColor = accent
-    val label = if (today) stringResource(R.string.day_today) else day.date.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
+    val label = if (today) stringResource(R.string.day_today) else day.date.format(DateTimeFormatter.ofPattern("EEE", LocalConfiguration.current.locales[0]))
     val description = buildString {
         append(day.date.fullLabel())
         if (day.wakeAt != null) append(", ").append(day.wakeAt.lcd())
@@ -415,6 +416,37 @@ fun DaysHint(onChoose: () -> Unit, onDismiss: () -> Unit) {
             Text(stringResource(R.string.days_hint), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
             TextButton(onClick = onChoose, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.days_hint_action)) }
             IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cd_close)) }
+        }
+    }
+}
+
+/** One-off proposal of "After the alarm", after the second real ring. "Try it" switches it on and rehearses. */
+@Composable
+fun PostWakeHint(onTry: () -> Unit, onDismiss: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.postwake_hint_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.postwake_hint_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.postwake_hint_dismiss)) }
+                TextButton(onClick = onTry, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.postwake_hint_action)) }
+            }
+        }
+    }
+}
+
+/** A morning is in progress: reopens the ring + list. */
+@Composable
+fun PostWakeActiveCard(onOpen: () -> Unit) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.postwake_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+            TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.postwake_open)) }
         }
     }
 }

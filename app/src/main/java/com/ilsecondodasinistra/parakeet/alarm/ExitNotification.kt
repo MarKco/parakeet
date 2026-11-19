@@ -28,6 +28,7 @@ object Notifications {
     const val CHANNEL_EXIT = "exit"
     const val CHANNEL_ALARM = "alarm"
     const val CHANNEL_UPCOMING = "upcoming"
+    const val CHANNEL_POST_WAKE = "postwake"
 
     fun createChannels(context: Context) {
         val channel = NotificationChannel(
@@ -50,7 +51,13 @@ object Notifications {
             context.getString(R.string.channel_upcoming_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply { description = context.getString(R.string.channel_upcoming_description) }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannels(listOf(channel, alarm, upcoming))
+        val postWake = NotificationChannel(
+            CHANNEL_POST_WAKE,
+            context.getString(R.string.channel_postwake_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply { description = context.getString(R.string.channel_postwake_description) }
+        context.getSystemService(NotificationManager::class.java)
+            .createNotificationChannels(listOf(channel, alarm, upcoming, postWake))
     }
 
     fun canPost(context: Context): Boolean =
@@ -64,7 +71,7 @@ class ExitNotificationScheduler @Inject constructor(@ApplicationContext private 
 
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
 
-    fun canScheduleExact(): Boolean = alarmManager.canScheduleExactAlarms()
+    fun canScheduleExact(): Boolean = alarmManager.canScheduleExact()
 
     fun schedule(atMillis: Long) {
         if (atMillis <= System.currentTimeMillis()) return
@@ -137,6 +144,7 @@ class RescheduleReceiver : BroadcastReceiver() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scheduler: ExitNotificationScheduler
     @Inject lateinit var alarmSync: AlarmSync
+    @Inject lateinit var postWake: PostWake
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
@@ -146,6 +154,7 @@ class RescheduleReceiver : BroadcastReceiver() {
                 if (current.alarmMode == AlarmMode.INTERNAL) {
                     // Weekly plan: the next occurrence is recomputed from the data, never from a stored moment
                     alarmSync.sync()
+                    postWake.refresh() // a morning in progress survives a reboot
                 } else {
                     val alarm = current.activeAlarm
                     if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {

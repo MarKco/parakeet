@@ -69,6 +69,17 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Parakeet" />
 
+        <!-- "After the alarm": ring + list. Shown over the lock screen (set in code, only when the user chose so)
+             when started by our own AlarmActivity: no extra permission, no full-screen intent. -->
+        <activity
+            android:name=".ui.postwake.PostWakeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Parakeet" />
+        <receiver android:name=".alarm.PostWakeReceiver" android:exported="false" />
+
         <receiver android:name=".alarm.ExitAlarmReceiver" android:exported="false" />
         <receiver android:name=".alarm.PlanReceiver" android:exported="false" />
 

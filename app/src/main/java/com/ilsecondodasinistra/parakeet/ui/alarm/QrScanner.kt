@@ -26,6 +26,7 @@ import java.util.concurrent.Executors
  * Camera preview that reads QR codes entirely on the device (bundled ML Kit model, no network, nothing stored).
  * [onCode] is called with the raw text of every code seen, on the main thread. Needs the CAMERA permission.
  */
+@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 @Composable
 fun QrScanner(onCode: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current

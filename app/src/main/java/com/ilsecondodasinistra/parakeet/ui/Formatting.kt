@@ -1,13 +1,13 @@
 package com.ilsecondodasinistra.parakeet.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.ilsecondodasinistra.parakeet.R
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private val timeFormatter = DateTimeFormatter.ofPattern("H:mm")
 
@@ -22,7 +22,7 @@ fun formatDuration(minutes: Int): String =
 /** "Today" / "Tomorrow" / weekday, followed by the short date, e.g. "Tomorrow, Fri 14 Nov". */
 @Composable
 fun dayLabel(moment: LocalDateTime, today: LocalDate): String {
-    val formatter = DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
+    val formatter = DateTimeFormatter.ofPattern("EEE d MMM", LocalConfiguration.current.locales[0])
     val prefix = when (moment.toLocalDate()) {
         today -> stringResource(R.string.day_today)
         today.plusDays(1) -> stringResource(R.string.day_tomorrow)

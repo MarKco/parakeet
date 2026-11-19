@@ -38,7 +38,15 @@ dopo: "Sveglia puntata · notifica uscita 8:00 · Annulla"
 - Stato della sveglia attiva sempre visibile e annullabile.
 - Drawer eliminato: Impostazioni e Info nel menu della top bar. Impostazioni ridotte a: modalità sveglia (v2), notifica di uscita on/off, testo notifica con anteprima.
 - Durate con chip rapidi (5/10/15/20/30) + valore libero; LCD solo per gli orari principali.
-- Da valutare: timeline del mattino (6:45 doccia → 7:00 colazione → … → 8:00 esci), routine salvate (feriale/weekend/palestra), promemoria serale "Hai puntato la sveglia?".
+- Timeline del mattino: fatta nella 5.2, vedi "Dopo la sveglia" sotto. Routine salvate e promemoria serale: fatti nella 5.1.
+
+## Dopo la sveglia (5.2)
+Opzionale, spenta di default, solo con la sveglia interna. Le attività della routine del giorno diventano una lista guidata fino all'uscita.
+- **Anello a segmenti**: un arco colorato per attività (palette delle routine, a rotazione), si consuma in senso orario; il tempo guadagnato finendo in anticipo è un arco grigio prima dell'uscita. Sotto, la lista: le attività scadute senza "Fatta" sfumano.
+- **Fasce fisse + recupero**: i segmenti partono dall'ora di sveglia programmata (anche dopo uno snooze). "Fatta" spunta e fa partire subito la successiva; "Prossima" salta senza spuntare; se il tempo finisce da solo si passa alla successiva.
+- **Notifica in corso** con l'attività attuale, il conto alla rovescia di sistema e i pulsanti Fatta/Prossima. Niente overlay sopra le altre app: richiederebbe `SYSTEM_ALERT_WINDOW`.
+- **Sopra il blocco**: dopo "Spegni" la schermata si apre da `AlarmActivity` (già in primo piano), senza permessi nuovi.
+- **Proposta**: una sola card in schermata principale dopo la 2ª sveglia suonata davvero ("Provala" / "No grazie"), solo se serve (sveglia interna, funzione spenta, almeno 2 attività). Nessun passo di onboarding, nessun dialog "novità". Sempre nelle Impostazioni → "Dopo la sveglia".
 
 ## Onboarding
 **Prima**: tour ShowcaseView a 4 cerchi + dialog "What's new". Spiega l'interfaccia ma non fa fare nulla, viene saltato. Da eliminare.

@@ -263,4 +263,38 @@
     <string name="pre_alarm_offset_before">%1$s before</string>
     <string name="duration_h">%1$d h</string>
     <string name="duration_h_m">%1$d h %2$d min</string>
+    <!-- 5.2 post-wake -->
+    <string name="channel_postwake_name">After the alarm</string>
+    <string name="channel_postwake_description">What to do next, until you leave</string>
+    <string name="notif_postwake_text">Leave at %1$s</string>
+    <string name="notif_postwake_all_done">All done!</string>
+    <string name="notif_postwake_margin">%1$d min to spare · leave at %2$s</string>
+    <string name="postwake_title">Before you leave</string>
+    <string name="postwake_to_exit">until %1$s</string>
+    <string name="postwake_done">Done</string>
+    <string name="postwake_next">Next</string>
+    <string name="postwake_skipped">Skipped</string>
+    <string name="postwake_left">%1$s left</string>
+    <string name="postwake_from">from %1$s</string>
+    <string name="postwake_time_up">Time to leave!</string>
+    <string name="postwake_all_done">All done</string>
+    <string name="postwake_margin">%1$d min to spare</string>
+    <string name="postwake_close">Close</string>
+    <string name="cd_postwake_ring">Time left until you leave, one arc for each activity</string>
+    <string name="settings_postwake">After the alarm</string>
+    <string name="postwake_enable_title">Guide me after the alarm</string>
+    <string name="postwake_enable_desc">Your morning activities as a to-do list, with a countdown to the time you leave</string>
+    <string name="postwake_ring_title">Ring and list</string>
+    <string name="postwake_ring_desc">A ring that gets used up, and activities that fade when their time runs out</string>
+    <string name="postwake_notify_title">Next-thing notification</string>
+    <string name="postwake_notify_desc">Always shows the current activity, with Done and Next buttons</string>
+    <string name="postwake_lock_title">Over the lock screen</string>
+    <string name="postwake_lock_desc">After Stop, the list opens right away, even with the phone locked</string>
+    <string name="postwake_try">Try it (1 min = 5 s)</string>
+    <string name="postwake_try_failed">You need at least two activities to try it</string>
+    <string name="postwake_hint_title">Want a guide for your morning?</string>
+    <string name="postwake_hint_body">After Stop, Parakeet can show your activities as a list, with a countdown to the time you leave.</string>
+    <string name="postwake_hint_action">Try it</string>
+    <string name="postwake_hint_dismiss">No thanks</string>
+    <string name="postwake_open">Open</string>
 </resources>
