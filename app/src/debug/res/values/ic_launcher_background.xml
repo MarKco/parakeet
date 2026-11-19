@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Debug build only: a violet background instead of the soft lime tint, so the debug icon is told apart at a glance -->
-    <color name="ic_launcher_background">#7B1FA2</color>
+    <!-- Debug build only: the soft tint of the icon background (#F4F8DC in the release) turned to violet like the rest of the icon -->
+    <color name="ic_launcher_background">#EFDCF8</color>
 </resources>
