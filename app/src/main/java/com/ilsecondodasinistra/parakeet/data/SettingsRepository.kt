@@ -83,6 +83,8 @@ data class PostWakeSession(
     val taskIds: List<Long>,
     val msPerMinute: Long,
     val events: List<PostWakeEvent>,
+    /** When the user stopped the alarm: the plan starts here, not at the scheduled wake-up (a snooze in between is lost time). */
+    val startedAtMillis: Long = wakeAtMillis,
     /** The "you are running late" alert was already shown this morning: it comes once. */
     val lateAlerted: Boolean = false,
 )
@@ -147,6 +149,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val pwScale = longPreferencesKey("postwake_ms_per_minute")
         val pwEvents = stringPreferencesKey("postwake_events")
         val pwLateAlerted = booleanPreferencesKey("postwake_late_alerted")
+        val pwStartedAt = longPreferencesKey("postwake_started_at")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -208,6 +211,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             taskIds = this[Keys.pwTaskIds].orEmpty().split(',').mapNotNull { it.toLongOrNull() },
             msPerMinute = this[Keys.pwScale] ?: PostWakeTimeline.MINUTE_MILLIS,
             events = PostWakeTimeline.decode(this[Keys.pwEvents]),
+            startedAtMillis = this[Keys.pwStartedAt] ?: wake, // a session saved before this existed starts at the wake-up
             lateAlerted = this[Keys.pwLateAlerted] ?: false,
         )
     }
@@ -297,6 +301,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         it[Keys.pwScale] = session.msPerMinute
         it[Keys.pwEvents] = PostWakeTimeline.encode(session.events)
         it[Keys.pwLateAlerted] = session.lateAlerted
+        it[Keys.pwStartedAt] = session.startedAtMillis
     }
 
     suspend fun markPostWakeLateAlerted() = context.dataStore.edit { it[Keys.pwLateAlerted] = true }
@@ -315,7 +320,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     suspend fun clearPostWakeSession() = context.dataStore.edit {
         it.remove(Keys.pwDay); it.remove(Keys.pwWake); it.remove(Keys.pwExit)
-        it.remove(Keys.pwTaskIds); it.remove(Keys.pwScale); it.remove(Keys.pwEvents); it.remove(Keys.pwLateAlerted)
+        it.remove(Keys.pwTaskIds); it.remove(Keys.pwScale); it.remove(Keys.pwEvents); it.remove(Keys.pwLateAlerted); it.remove(Keys.pwStartedAt)
     }
 
     /** Counts a real ring (not a test, not a snooze) to time the one-off proposal. */

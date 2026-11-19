@@ -87,7 +87,12 @@ class PostWake @Inject constructor(
         val steps = tasks.tasks.first().filter { it.id in schedule.taskIds }
         // Two activities at least (the cushion of the plan is not one); the cushion stays in the session for the ring
         if (steps.count { !it.buffer } < 2 || exit.toMillis() <= System.currentTimeMillis()) return false
-        start(PostWakeSession(day, wake.toMillis(), exit.toMillis(), steps.map { it.id }, PostWakeTimeline.MINUTE_MILLIS, emptyList()))
+        start(
+            PostWakeSession(
+                day, wake.toMillis(), exit.toMillis(), steps.map { it.id }, PostWakeTimeline.MINUTE_MILLIS, emptyList(),
+                startedAtMillis = System.currentTimeMillis(), // the plan starts at Stop: a snooze eats the cushion
+            ),
+        )
         true
     }
 
@@ -244,6 +249,12 @@ class PostWake @Inject constructor(
         fun clamp(t: Long) = t.coerceIn(state.wakeAtMillis, state.exitAtMillis)
         val style = Notification.ProgressStyle().setStyledByProgress(true)
         var total = 0
+        // The minutes of a snooze: already gone, in a neutral colour, before the first activity
+        val gone = ((clamp(state.startAtMillis) - state.wakeAtMillis) / 1000).toInt()
+        if (gone > 0) {
+            style.addProgressSegment(Notification.ProgressStyle.Segment(gone).setColor(GONE_ARGB))
+            total += gone
+        }
         for (s in state.segments) {
             val length = ((clamp(s.endMillis) - clamp(s.startMillis)) / 1000).toInt()
             if (length <= 0) continue
@@ -305,6 +316,7 @@ class PostWake @Inject constructor(
         private const val ALERT_ID = 21
         private const val ALERT_TIMEOUT_MILLIS = 30_000L
         private const val MARGIN_ARGB = 0xFF70756A.toInt()
+        private const val GONE_ARGB = 0xFFB4B9AC.toInt()
         private const val DEMO_MS_PER_MINUTE = 5_000L
         private const val DEMO_MAX_STEPS = 5
         private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
@@ -317,6 +329,7 @@ class PostWake @Inject constructor(
                 session.wakeAtMillis, session.exitAtMillis, planned.filter { !it.buffer },
                 session.events, nowMillis, session.msPerMinute,
                 bufferMillis = planned.filter { it.buffer }.sumOf { it.minutes } * session.msPerMinute,
+                startAtMillis = session.startedAtMillis,
             )
         }
     }

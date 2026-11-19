@@ -276,6 +276,45 @@ class PostWakeTimelineTest {
         assertEquals(t.marginMillis, t.gainedMillis)
     }
 
+    // Snooze: the alarm was due at 07:00 and stopped later. The cushion is 5 min, the activities 45 min, exit 07:50.
+    private fun snoozed(stoppedAt: Long, now: Long, vararg events: PostWakeEvent) =
+        PostWakeTimeline.compute(wake, at(7, 50), tasks, events.toList(), now, bufferMillis = 5 * minute, startAtMillis = stoppedAt)
+
+    @Test fun aSnoozeLongerThanTheCushionIsLatenessAtOnce() {
+        // 10 min of snooze, 5 min of cushion: late by 5 from the very first moment
+        val t = snoozed(at(7, 10), at(7, 12))
+        assertEquals(5 * minute, t.overflowMillis)
+        assertEquals(0L, t.marginMillis)
+        assertEquals(at(7, 10), t.startAtMillis)
+    }
+
+    @Test fun theFirstActivityKeepsAllItsMinutesAfterASnooze() {
+        val t = snoozed(at(7, 10), at(7, 12))
+        assertEquals(at(7, 10), t.steps[0].startMillis)
+        assertEquals(at(7, 25), t.steps[0].plannedEndMillis) // the full 15 min, from the stop
+        assertFalse(t.steps[0].overrun)
+    }
+
+    @Test fun aShortSnoozeOnlyUsesPartOfTheCushion() {
+        val t = snoozed(at(7, 3), at(7, 5))
+        assertEquals(2 * minute, t.marginMillis)
+        assertEquals(0L, t.overflowMillis)
+        assertEquals(0L, t.gainedMillis)
+    }
+
+    @Test fun noSnoozeStartsAtTheWakeUp() {
+        assertEquals(withCushion(at(7, 10)).marginMillis, snoozed(wake, at(7, 10)).marginMillis)
+        // a stop "before" the wake-up (clock oddities) never moves the start earlier
+        assertEquals(wake, snoozed(at(6, 59), at(7, 10)).startAtMillis)
+    }
+
+    @Test fun finishingEarlyAfterASnoozeStillCountsFromTheStop() {
+        // stopped at 07:03, Doccia done at 07:08 (5 of its 15 min): 10 min go back to the cushion (5 - 3 + 10)
+        val t = snoozed(at(7, 3), at(7, 10), PostWakeEvent(1, DONE, at(7, 8)))
+        assertEquals(12 * minute, t.marginMillis)
+        assertEquals(7 * minute, t.gainedMillis)
+    }
+
     @Test fun eventsRoundTripThroughTheStringFormat() {
         val events = listOf(PostWakeEvent(1, DONE, 1000L), PostWakeEvent(7, DEFER, 2000L), PostWakeEvent(9, SKIP, 3000L))
         assertEquals(events, PostWakeTimeline.decode(PostWakeTimeline.encode(events)))

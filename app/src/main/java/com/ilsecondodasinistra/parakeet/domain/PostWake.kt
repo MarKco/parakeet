@@ -53,6 +53,8 @@ data class TimelineState(
     val overflowMillis: Long,
     val wakeAtMillis: Long,
     val exitAtMillis: Long,
+    /** Where the plan starts: the moment the alarm was stopped. The time from the wake-up to here (a snooze) is already gone. */
+    val startAtMillis: Long,
     val nowMillis: Long,
     val msPerMinute: Long,
     /** The "time for the unexpected" planned at the end of the morning (it is part of [marginMillis] from the start). */
@@ -87,8 +89,8 @@ data class TimelineState(
 }
 
 /**
- * The morning after the alarm: tasks laid end to end from the scheduled wake-up, the whole ring being
- * wake-up → exit. The cursor is the real clock; nothing moves on by itself.
+ * The morning after the alarm: tasks laid end to end from the moment the alarm was stopped, the whole ring being
+ * wake-up → exit (the minutes between the scheduled wake-up and the stop, a snooze, show as time already gone). The cursor is the real clock; nothing moves on by itself.
  *
  * - The current task stays current until the user acts. Past its planned time its slot keeps growing with the
  *   clock ([StepState.overrun]), pushing the later slots forward and eating the margin.
@@ -116,11 +118,15 @@ object PostWakeTimeline {
         nowMillis: Long,
         msPerMinute: Long = MINUTE_MILLIS,
         bufferMillis: Long = 0,
+        startAtMillis: Long = wakeAtMillis,
     ): TimelineState {
+        // The plan starts when the alarm was stopped, not at the scheduled wake-up: a snooze in between is time lost
+        // from the cushion (and from the lead, then into lateness), the first activity keeps all its minutes.
+        val planStart = maxOf(wakeAtMillis, minOf(startAtMillis, nowMillis))
         val segments = ArrayList<StepState>(tasks.size)
         val queue = ArrayDeque(tasks.mapIndexed { i, t -> Slot(i, t, t.minutes * msPerMinute, false) })
         val consumed = HashSet<Int>() // an event ends exactly one slot, never the one it just opened
-        var cursor = wakeAtMillis
+        var cursor = planStart
         var currentFound = false
         while (queue.isNotEmpty()) {
             val slot = queue.removeFirst()
@@ -189,6 +195,7 @@ object PostWakeTimeline {
             overflowMillis = (cursor - exitAtMillis).coerceAtLeast(0),
             wakeAtMillis = wakeAtMillis,
             exitAtMillis = exitAtMillis,
+            startAtMillis = planStart,
             nowMillis = nowMillis,
             msPerMinute = msPerMinute,
             bufferMillis = bufferMillis,

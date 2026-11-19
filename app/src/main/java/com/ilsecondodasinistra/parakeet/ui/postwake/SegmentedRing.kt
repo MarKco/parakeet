@@ -82,6 +82,10 @@ fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, dotColor:
                     arc(color, maxOf(a0, now), a1)
                 }
 
+                // The minutes lost to a snooze, between the scheduled wake-up and the stop: consumed, in the ink's own tone
+                val lostEnd = ((state.startAtMillis - state.wakeAtMillis).coerceIn(0L, span)).toFloat() / span * 360f
+                arc(dotColor.copy(alpha = 0.14f), 0f, lostEnd)
+
                 animator.shown().forEach { a ->
                     segment(a.color ?: if (a.colorIndex < 0) MarginColor else stepColor(a.colorIndex), a.start, a.end)
                 }
