@@ -219,7 +219,7 @@ private fun RingHeader(state: TimelineState, callout: Callout?, onLockScreen: Bo
                     Text(stringResource(R.string.postwake_time_up), style = MaterialTheme.typography.titleLarge, color = accent, textAlign = TextAlign.Center)
                 } else {
                     // Always the real time to the exit: the ring may show margin, this number never lies
-                    LcdText(remaining(state.remainingToExitMillis), 64.sp, color = accent)
+                    LcdDuration(state.remainingToExitMillis, accent)
                     Text(
                         stringResource(R.string.postwake_to_exit, exitTime(state)),
                         style = MaterialTheme.typography.labelLarge,
@@ -344,8 +344,8 @@ private fun StepRow(step: StepState, state: TimelineState, onAct: (Long, PostWak
                 )
                 val detail = when (step.status) {
                     StepStatus.CURRENT ->
-                        if (step.overrun) stringResource(R.string.postwake_late_row, remaining(state.nowMillis - step.plannedEndMillis))
-                        else stringResource(R.string.postwake_left, remaining(step.plannedEndMillis - state.nowMillis))
+                        if (step.overrun) stringResource(R.string.postwake_late_row, durationText(state.nowMillis - step.plannedEndMillis))
+                        else stringResource(R.string.postwake_left, durationText(step.plannedEndMillis - state.nowMillis))
                     StepStatus.UPCOMING -> stringResource(
                         if (step.postponed) R.string.postwake_postponed_from else R.string.postwake_from,
                         Instant.ofEpochMilli(step.startMillis).atZone(ZoneId.systemDefault()).format(TIME),
@@ -403,11 +403,45 @@ private fun StepRow(step: StepState, state: TimelineState, onAct: (Long, PostWak
 private fun exitTime(state: TimelineState): String =
     Instant.ofEpochMilli(state.exitAtMillis).atZone(ZoneId.systemDefault()).format(TIME)
 
-/** "H:MM" from an hour up, "MM:SS" below: the LCD shows what is left until the exit. */
-private fun remaining(millis: Long): String {
+/**
+ * The time left on the LCD: the digits in the LCD font, the units in plain text next to them, so "1 h 24 m" cannot
+ * be read as minutes and seconds. Hours and minutes from an hour up, minutes and seconds below, then seconds.
+ */
+@Composable
+private fun LcdDuration(millis: Long, color: Color) {
     val total = (millis / 1000).coerceAtLeast(0)
     val h = total / 3600
     val m = (total % 3600) / 60
     val s = total % 60
-    return if (h > 0) "%d:%02d".format(h, m) else "%02d:%02d".format(m, s)
+    val parts = when {
+        h > 0 -> listOf(h.toString() to "h", "%02d".format(m) to "m")
+        m > 0 -> listOf(m.toString() to "m", "%02d".format(s) to "s")
+        else -> listOf(s.toString() to "s")
+    }
+    // Four digits plus two units must still fit inside the ring
+    val size = if (parts.sumOf { it.first.length } >= 4) 52.sp else 64.sp
+    Row {
+        parts.forEachIndexed { index, (digits, unit) ->
+            if (index > 0) Spacer(Modifier.width(8.dp))
+            LcdText(digits, size, Modifier.alignByBaseline(), color)
+            Text(
+                unit, style = MaterialTheme.typography.titleMedium, color = color.copy(alpha = 0.85f),
+                modifier = Modifier.padding(start = 3.dp).alignByBaseline(),
+            )
+        }
+    }
+}
+
+/** "1 h 24 min", "14 min 45 s" or "45 s": words, not a clock face, for the rows of the list. */
+@Composable
+private fun durationText(millis: Long): String {
+    val total = (millis / 1000).coerceAtLeast(0)
+    val h = (total / 3600).toInt()
+    val m = ((total % 3600) / 60).toInt()
+    val s = (total % 60).toInt()
+    return when {
+        h > 0 -> stringResource(R.string.duration_h_m, h, m)
+        m > 0 -> stringResource(R.string.duration_m_s, m, s)
+        else -> stringResource(R.string.duration_s, s)
+    }
 }

@@ -317,4 +317,6 @@
     <string name="notif_postwake_title_now">Now: %1$s</string>
     <string name="notif_postwake_text_next">Next: %1$s · leave at %2$s</string>
     <string name="postwake_callout_lead_gone">Your lead is gone: from here you\'re running late</string>
+    <string name="duration_m_s">%1$d min %2$d s</string>
+    <string name="duration_s">%1$d s</string>
 </resources>

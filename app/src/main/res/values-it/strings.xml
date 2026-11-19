@@ -303,4 +303,6 @@
     <string name="notif_postwake_title_now">Ora: %1$s</string>
     <string name="notif_postwake_text_next">Poi: %1$s · esci alle %2$s</string>
     <string name="postwake_callout_lead_gone">L\'anticipo è finito: da qui sei in ritardo</string>
+    <string name="duration_m_s">%1$d min %2$d s</string>
+    <string name="duration_s">%1$d s</string>
 </resources>
