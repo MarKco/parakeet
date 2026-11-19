@@ -399,6 +399,7 @@ fun RoutineEditorScreen(
             onSave = { n, m -> viewModel.addCatalogTask(n, m) { id -> taskIds = taskIds + id }; addTask = false },
             onDelete = null,
             onDismiss = { addTask = false },
+            onSaveAndContinue = { n, m -> viewModel.addCatalogTask(n, m) { id -> taskIds = taskIds + id } },
         )
     }
     if (confirmDelete && existing != null) {

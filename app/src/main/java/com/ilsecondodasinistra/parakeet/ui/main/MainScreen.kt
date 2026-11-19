@@ -477,6 +477,7 @@ fun MainScreen(
             onSave = { name, minutes -> viewModel.addTask(name, minutes); showAddDialog = false },
             onDelete = null,
             onDismiss = { showAddDialog = false },
+            onSaveAndContinue = { name, minutes -> viewModel.addTask(name, minutes) },
         )
     }
     state.tasks.firstOrNull { it.id == editingTaskId }?.let { task ->

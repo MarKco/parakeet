@@ -283,4 +283,6 @@
     <string name="postwake_hint_action">Provala</string>
     <string name="postwake_hint_dismiss">No grazie</string>
     <string name="postwake_open">Apri</string>
+    <string name="task_add_continue">Aggiungi altra</string>
+    <string name="task_added">Aggiunta: %1$s</string>
 </resources>

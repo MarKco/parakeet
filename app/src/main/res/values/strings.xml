@@ -297,4 +297,6 @@
     <string name="postwake_hint_action">Try it</string>
     <string name="postwake_hint_dismiss">No thanks</string>
     <string name="postwake_open">Open</string>
+    <string name="task_add_continue">Add another</string>
+    <string name="task_added">Added: %1$s</string>
 </resources>
