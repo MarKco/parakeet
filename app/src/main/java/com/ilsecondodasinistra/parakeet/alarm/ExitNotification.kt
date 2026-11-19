@@ -28,7 +28,9 @@ object Notifications {
     const val CHANNEL_EXIT = "exit"
     const val CHANNEL_ALARM = "alarm"
     const val CHANNEL_UPCOMING = "upcoming"
-    const val CHANNEL_POST_WAKE = "postwake"
+    const val CHANNEL_POST_WAKE = "postwake_live"
+    const val CHANNEL_POST_WAKE_ALERT = "postwake_alert"
+    private const val LEGACY_CHANNEL_POST_WAKE = "postwake"
 
     fun createChannels(context: Context) {
         val channel = NotificationChannel(
@@ -51,13 +53,28 @@ object Notifications {
             context.getString(R.string.channel_upcoming_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply { description = context.getString(R.string.channel_upcoming_description) }
+        // Default importance but silent: it sits with the normal notifications, not in the "silent" ones below
         val postWake = NotificationChannel(
             CHANNEL_POST_WAKE,
             context.getString(R.string.channel_postwake_name),
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply { description = context.getString(R.string.channel_postwake_description) }
-        context.getSystemService(NotificationManager::class.java)
-            .createNotificationChannels(listOf(channel, alarm, upcoming, postWake))
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.channel_postwake_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
+        val postWakeAlert = NotificationChannel(
+            CHANNEL_POST_WAKE_ALERT,
+            context.getString(R.string.channel_postwake_alert_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.channel_postwake_alert_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_POST_WAKE) // the low-importance one of development builds
+        manager.createNotificationChannels(listOf(channel, alarm, upcoming, postWake, postWakeAlert))
     }
 
     fun canPost(context: Context): Boolean =

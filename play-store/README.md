@@ -38,6 +38,7 @@ Play richiede un URL pubblico. Carica `privacy-policy.html` sul tuo sito (ad es.
 |---|---|---|
 | `SET_ALARM` | normale, nessuna dichiarazione | crea la sveglia nell'app Orologio |
 | `POST_NOTIFICATIONS` | runtime | notifica "Ora di uscire!" (facoltativa) |
+| `POST_PROMOTED_NOTIFICATIONS` | normale (Android 16, nessuna dichiarazione) | notifica "Prima di uscire" come Live Update (chip nella barra di stato); facoltativa, l'utente può spegnerla |
 | `SCHEDULE_EXACT_ALARM` | **da valutare** | la notifica di uscita deve arrivare all'ora impostata dall'utente; l'utente la concede da "Sveglie e promemoria"; senza, l'app ripiega su un allarme non esatto |
 | `RECEIVE_BOOT_COMPLETED` | normale | riprogramma sveglia e notifica dopo il riavvio |
 | `USE_EXACT_ALARM` | **dichiarazione Console** (sveglia) | la funzione principale è una sveglia: deve suonare all'ora esatta |

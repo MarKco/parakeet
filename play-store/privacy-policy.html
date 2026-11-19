@@ -40,6 +40,7 @@
 <tr><th>Permesso</th><th>A cosa serve</th></tr>
 <tr><td>Impostare sveglie (<code>SET_ALARM</code>)</td><td>Creare la sveglia nell'app Orologio del dispositivo.</td></tr>
 <tr><td>Notifiche (<code>POST_NOTIFICATIONS</code>)</td><td>Mostrare la notifica "Ora di uscire!" all'orario di uscita. Facoltativo: si può rifiutare o disattivare nelle impostazioni.</td></tr>
+<tr><td>Aggiornamenti in tempo reale (<code>POST_PROMOTED_NOTIFICATIONS</code>, Android 16)</td><td>Mostrare nella barra di stato, durante la mattina, la notifica "Prima di uscire" con l'attività in corso. Facoltativo: si può disattivare dalle impostazioni di sistema.</td></tr>
 <tr><td>Sveglie e promemoria (<code>SCHEDULE_EXACT_ALARM</code>)</td><td>Far arrivare la notifica di uscita all'ora esatta. Facoltativo: senza, la notifica può arrivare con qualche minuto di ritardo.</td></tr>
 <tr><td>Avvio del dispositivo (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Riprogrammare la notifica di uscita e la sveglia dopo un riavvio del telefono.</td></tr>
 <tr><td>Sveglie esatte (<code>USE_EXACT_ALARM</code>)</td><td>Far suonare la sveglia di Parakeet all'ora esatta. Concesso automaticamente (Android 13+); su Android 12 si usa `SCHEDULE_EXACT_ALARM`, concesso dall'utente.</td></tr>
@@ -90,6 +91,7 @@
 <tr><th>Permission</th><th>Purpose</th></tr>
 <tr><td>Set alarms (<code>SET_ALARM</code>)</td><td>Create the alarm in your device's Clock app.</td></tr>
 <tr><td>Notifications (<code>POST_NOTIFICATIONS</code>)</td><td>Show the "Time to leave!" notification at your exit time. Optional: you can decline or turn it off in settings.</td></tr>
+<tr><td>Live updates (<code>POST_PROMOTED_NOTIFICATIONS</code>, Android 16)</td><td>Show the "Before you leave" notification, with your current activity, in the status bar during the morning. Optional: you can turn it off in system settings.</td></tr>
 <tr><td>Alarms &amp; reminders (<code>SCHEDULE_EXACT_ALARM</code>)</td><td>Deliver the exit notification at the exact time. Optional: without it the notification may arrive a few minutes late.</td></tr>
 <tr><td>Run at startup (<code>RECEIVE_BOOT_COMPLETED</code>)</td><td>Reschedule the exit notification and the alarm after the phone restarts.</td></tr>
 <tr><td>Exact alarms (<code>USE_EXACT_ALARM</code>)</td><td>Ring the Parakeet alarm at the exact time. Granted automatically (Android 13+); on Android 12 `SCHEDULE_EXACT_ALARM` is used, granted by the user.</td></tr>

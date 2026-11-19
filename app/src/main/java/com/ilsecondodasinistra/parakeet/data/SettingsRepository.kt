@@ -82,6 +82,8 @@ data class PostWakeSession(
     val taskIds: List<Long>,
     val msPerMinute: Long,
     val events: List<PostWakeEvent>,
+    /** The "you are running late" alert was already shown this morning: it comes once. */
+    val lateAlerted: Boolean = false,
 )
 
 data class Settings(
@@ -142,6 +144,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val pwTaskIds = stringPreferencesKey("postwake_task_ids")
         val pwScale = longPreferencesKey("postwake_ms_per_minute")
         val pwEvents = stringPreferencesKey("postwake_events")
+        val pwLateAlerted = booleanPreferencesKey("postwake_late_alerted")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }
@@ -202,6 +205,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             taskIds = this[Keys.pwTaskIds].orEmpty().split(',').mapNotNull { it.toLongOrNull() },
             msPerMinute = this[Keys.pwScale] ?: PostWakeTimeline.MINUTE_MILLIS,
             events = PostWakeTimeline.decode(this[Keys.pwEvents]),
+            lateAlerted = this[Keys.pwLateAlerted] ?: false,
         )
     }
 
@@ -287,7 +291,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         it[Keys.pwTaskIds] = session.taskIds.joinToString(",")
         it[Keys.pwScale] = session.msPerMinute
         it[Keys.pwEvents] = PostWakeTimeline.encode(session.events)
+        it[Keys.pwLateAlerted] = session.lateAlerted
     }
+
+    suspend fun markPostWakeLateAlerted() = context.dataStore.edit { it[Keys.pwLateAlerted] = true }
 
     /** Atomic read-modify-write of the event log: two quick taps never lose one. Returns the new session. */
     suspend fun appendPostWakeEvent(event: PostWakeEvent): PostWakeSession? {
@@ -303,7 +310,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     suspend fun clearPostWakeSession() = context.dataStore.edit {
         it.remove(Keys.pwDay); it.remove(Keys.pwWake); it.remove(Keys.pwExit)
-        it.remove(Keys.pwTaskIds); it.remove(Keys.pwScale); it.remove(Keys.pwEvents)
+        it.remove(Keys.pwTaskIds); it.remove(Keys.pwScale); it.remove(Keys.pwEvents); it.remove(Keys.pwLateAlerted)
     }
 
     /** Counts a real ring (not a test, not a snooze) to time the one-off proposal. */

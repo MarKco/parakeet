@@ -30,6 +30,7 @@ Questi dati restano esclusivamente nella memoria privata dell'app sul dispositiv
 |---|---|
 | Impostare sveglie (`SET_ALARM`) | Creare la sveglia nell'app Orologio del dispositivo. |
 | Notifiche (`POST_NOTIFICATIONS`) | Mostrare la notifica "Ora di uscire!" all'orario di uscita. Facoltativo: si può rifiutare o disattivare nelle impostazioni. |
+| Aggiornamenti in tempo reale (`POST_PROMOTED_NOTIFICATIONS`, Android 16) | Mostrare nella barra di stato, durante la mattina, la notifica "Prima di uscire" con l'attività in corso. Facoltativo: si può disattivare dalle impostazioni di sistema. |
 | Sveglie e promemoria (`SCHEDULE_EXACT_ALARM`) | Far arrivare la notifica di uscita all'ora esatta. Facoltativo: senza, la notifica può arrivare con qualche minuto di ritardo. |
 | Avvio del dispositivo (`RECEIVE_BOOT_COMPLETED`) | Riprogrammare la notifica di uscita e la sveglia dopo un riavvio del telefono. |
 | Sveglie esatte (`USE_EXACT_ALARM`) | Far suonare la sveglia di Parakeet all'ora esatta. Concesso automaticamente (Android 13+); su Android 12 si usa `SCHEDULE_EXACT_ALARM`, concesso dall'utente. |
@@ -85,6 +86,7 @@ This data stays exclusively in the app's private storage on your device. It is d
 |---|---|
 | Set alarms (`SET_ALARM`) | Create the alarm in your device's Clock app. |
 | Notifications (`POST_NOTIFICATIONS`) | Show the "Time to leave!" notification at your exit time. Optional: you can decline or turn it off in settings. |
+| Live updates (`POST_PROMOTED_NOTIFICATIONS`, Android 16) | Show the "Before you leave" notification, with your current activity, in the status bar during the morning. Optional: you can turn it off in system settings. |
 | Alarms & reminders (`SCHEDULE_EXACT_ALARM`) | Deliver the exit notification at the exact time. Optional: without it the notification may arrive a few minutes late. |
 | Run at startup (`RECEIVE_BOOT_COMPLETED`) | Reschedule the exit notification and the alarm after the phone restarts. |
 | Exact alarms (`USE_EXACT_ALARM`) | Ring the Parakeet alarm at the exact time. Granted automatically (Android 13+); on Android 12 `SCHEDULE_EXACT_ALARM` is used, granted by the user. |

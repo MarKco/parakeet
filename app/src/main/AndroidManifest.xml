@@ -11,6 +11,8 @@
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- "Time to leave" notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16: lets the "Before you leave" notification show as a Live Update (chip in the status bar) -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Exact timing: user-granted below Android 13, granted automatically from 13 (alarm-clock app) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />

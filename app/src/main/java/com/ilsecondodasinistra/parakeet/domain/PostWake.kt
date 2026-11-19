@@ -55,7 +55,7 @@ data class TimelineState(
     val exitAtMillis: Long,
     val nowMillis: Long,
     val msPerMinute: Long,
-    /** Next instant at which the state changes on its own (the current task passes its time, the exit), null after the exit. */
+    /** Next instant at which the state changes on its own (the current task passes its time, the margin runs out, the exit), null after the exit. */
     val nextBoundaryMillis: Long?,
     /** How many events shaped this timeline: changes exactly when the user acts, which is when the ring animates. */
     val eventCount: Int,
@@ -161,10 +161,13 @@ object PostWakeTimeline {
         val steps = segments.filterIndexed { i, s -> lastSlot[s.task.id] == i }
         val currentIndex = steps.indexOfFirst { it.status == StepStatus.CURRENT }
         val current = steps.getOrNull(currentIndex)
+        val marginMillis = (exitAtMillis - cursor).coerceAtLeast(0)
         val boundary = when {
             nowMillis >= exitAtMillis -> null
             else -> listOfNotNull(
                 current?.plannedEndMillis,
+                // the moment the margin runs out if the current activity keeps going: from then on it is lateness
+                current?.takeIf { marginMillis > 0 }?.let { maxOf(it.plannedEndMillis, nowMillis) + marginMillis },
                 // before the wake-up nothing runs yet: the first task starts at the wake-up
                 wakeAtMillis.takeIf { currentIndex == -1 && it > nowMillis },
                 exitAtMillis,
@@ -174,7 +177,7 @@ object PostWakeTimeline {
             segments = segments,
             steps = steps,
             currentIndex = currentIndex,
-            marginMillis = (exitAtMillis - cursor).coerceAtLeast(0),
+            marginMillis = marginMillis,
             overflowMillis = (cursor - exitAtMillis).coerceAtLeast(0),
             wakeAtMillis = wakeAtMillis,
             exitAtMillis = exitAtMillis,

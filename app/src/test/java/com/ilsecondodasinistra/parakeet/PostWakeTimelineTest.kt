@@ -95,6 +95,15 @@ class PostWakeTimelineTest {
         assertFalse(t.steps[2].beyondExit)
     }
 
+    @Test fun theMarginRunningOutIsAMomentToWakeUpFor() {
+        // Doccia done at 07:05 leaves 10 min of margin; Colazione is planned until 07:25 and the margin ends at 07:35
+        val before = compute(at(7, 10), PostWakeEvent(1, DONE, at(7, 5)))
+        assertEquals(at(7, 25), before.nextBoundaryMillis) // first the activity passes its time
+        val over = compute(at(7, 30), PostWakeEvent(1, DONE, at(7, 5)))
+        assertEquals(5 * minute, over.marginMillis)
+        assertEquals(at(7, 35), over.nextBoundaryMillis) // then the margin runs out: lateness starts
+    }
+
     @Test fun onceTheMarginIsGoneItIsLateness() {
         val t = compute(at(7, 40), PostWakeEvent(1, DONE, at(7, 5)))
         assertEquals(0L, t.marginMillis)
