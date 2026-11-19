@@ -69,6 +69,14 @@ data class TimelineState(
     val current: StepState? get() = steps.getOrNull(currentIndex)
     val remainingToExitMillis: Long get() = (exitAtMillis - nowMillis).coerceAtLeast(0)
 
+    /**
+     * How high the water of lateness stands, 0 to 1: the real lateness ([overflowMinutes] once the cushion and the
+     * lead are gone) against [LATE_WATER_FULL_MINUTES], which is as much as the ring can hold: that late is
+     * hardly recoverable, so more does not rise any further.
+     */
+    val lateWaterLevel: Float
+        get() = (overflowMillis.toFloat() / (LATE_WATER_FULL_MINUTES * msPerMinute)).coerceIn(0f, 1f)
+
     /** What was gained on the plan: the margin above the planned cushion. */
     val gainedMillis: Long get() = (marginMillis - bufferMillis).coerceAtLeast(0)
 
@@ -229,3 +237,6 @@ object PostWakeTimeline {
         PostWakeEvent(id, action, at)
     }
 }
+
+/** Lateness that fills the ring with water: past this nothing is recoverable any more, so the level stops. */
+const val LATE_WATER_FULL_MINUTES = 30

@@ -315,6 +315,29 @@ class PostWakeTimelineTest {
         assertEquals(7 * minute, t.gainedMillis)
     }
 
+    @Test fun theWaterOfLatenessIsAFractionOfThirtyMinutes() {
+        assertEquals(0f, compute(at(7, 10)).lateWaterLevel, 0.0001f) // on time
+        assertEquals(0f, withCushion(at(7, 18)).lateWaterLevel, 0.0001f) // the cushion absorbs it: dry
+        // 3 min over the exit: 3 of 30
+        assertEquals(0.1f, snoozed(at(7, 8), at(7, 9)).lateWaterLevel, 0.0001f)
+    }
+
+    @Test fun theWaterStopsAtThirtyMinutes() {
+        // stopped at 07:35 for a 45 min plan with the exit at 07:45: 35 min late
+        val late = PostWakeTimeline.compute(wake, exit, tasks, emptyList(), at(7, 36), startAtMillis = at(7, 35))
+        assertEquals(35 * minute, late.overflowMillis)
+        assertEquals(1f, late.lateWaterLevel, 0.0001f) // more than 30 min late: full, not more
+    }
+
+    @Test fun theWaterFollowsTheDemoScale() {
+        // 1 minute = 5 seconds: 6 demo seconds are not 6 minutes, so the level is judged in demo minutes
+        val t = PostWakeTimeline.compute(
+            wake, wake + 45 * 5_000, tasks, emptyList(), wake + 20_000, msPerMinute = 5_000, startAtMillis = wake + 15_000,
+        )
+        assertEquals(15_000L, t.overflowMillis) // 3 demo minutes
+        assertEquals(3f / 30f, t.lateWaterLevel, 0.01f)
+    }
+
     @Test fun eventsRoundTripThroughTheStringFormat() {
         val events = listOf(PostWakeEvent(1, DONE, 1000L), PostWakeEvent(7, DEFER, 2000L), PostWakeEvent(9, SKIP, 3000L))
         assertEquals(events, PostWakeTimeline.decode(PostWakeTimeline.encode(events)))

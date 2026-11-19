@@ -1,6 +1,13 @@
 package com.ilsecondodasinistra.parakeet.ui.postwake
 
+import android.provider.Settings
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -18,14 +25,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.util.lerp
 import com.ilsecondodasinistra.parakeet.domain.RoutineColors
 import com.ilsecondodasinistra.parakeet.domain.TimelineState
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -45,8 +59,8 @@ val ErodingColor = Color(RoutineColors[1])
  * The time from the wake-up to the exit as a ring that never changes scale, one coloured arc per activity and one
  * grey arc of margin at the end. The elapsed part fades to a faint track, so the ring is consumed counterclockwise
  * (as system timers do) and a dot marks "now", which is the real clock. An activity that runs over grows with the
- * clock, pushing the later arcs and shrinking the margin; past the margin, a thin coral arc outside the ring says
- * how late the plan now ends. When the user acts, the time not used by the finished activity slides into the
+ * clock, pushing the later arcs and shrinking the margin; past the margin, water of lateness rises inside the ring
+ * (see [LateWater]). When the user acts, the time not used by the finished activity slides into the
  * margin, and a postponed activity's arc travels to the back.
  */
 @Composable
@@ -58,12 +72,14 @@ fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, dotColor:
     LaunchedEffect(animator.epoch) { if (animator.epoch > 0) animator.run() }
 
     Box(modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
+        // Behind everything: the ring's arcs and the number sit on top of the water
+        // On a dark ground (the dot is light) coral at 35% looks muddy: a stronger tint there
+        LateWater(state.lateWaterLevel, strength = if (dotColor.luminance() > 0.5f) 1.45f else 1f, modifier = Modifier.matchParentSize())
         Canvas(Modifier.matchParentSize()) {
             // Mirrored: like a timer, the ring is used up counterclockwise, the remaining arc shrinking toward the exit at 12 o'clock
             scale(scaleX = -1f, scaleY = 1f, pivot = Offset(size.width / 2, size.height / 2)) {
-                val stroke = size.minDimension * 0.075f
-                val thin = size.minDimension * 0.016f // the lateness arc, outside the ring
-                val inset = thin * 2.6f + stroke / 2
+                val stroke = size.minDimension * RING_STROKE
+                val inset = stroke / 2 + size.minDimension * RING_EDGE
                 val arcSize = Size(size.width - 2 * inset, size.height - 2 * inset)
                 val topLeft = Offset(inset, inset)
                 val span = (state.exitAtMillis - state.wakeAtMillis).coerceAtLeast(1L)
@@ -90,15 +106,6 @@ fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, dotColor:
                     segment(a.color ?: if (a.colorIndex < 0) MarginColor else stepColor(a.colorIndex), a.start, a.end)
                 }
 
-                // Lateness: how far past the exit the plan now ends, as a thin arc around the ring
-                if (state.overflowMillis > 0) {
-                    val sweep = (state.overflowMillis.toFloat() / span * 360f).coerceIn(2f, 360f)
-                    drawArc(
-                        LateColor, -90f, sweep, false, Offset(thin / 2, thin / 2),
-                        Size(size.width - thin, size.height - thin), style = Stroke(thin, cap = StrokeCap.Round),
-                    )
-                }
-
                 // "Now" dot on the leading edge of the ring
                 if (state.nowMillis in state.wakeAtMillis until state.exitAtMillis) {
                     val r = (size.minDimension - 2 * inset) / 2
@@ -113,6 +120,71 @@ fun SegmentedRing(state: TimelineState, modifier: Modifier = Modifier, dotColor:
         center()
     }
 }
+
+// The ring's geometry, as fractions of its size: the water has to stay inside the arcs
+private const val RING_STROKE = 0.075f
+private const val RING_EDGE = 0.012f
+private const val WATER_RADIUS = 0.5f - RING_STROKE - RING_EDGE - 0.012f
+
+/** Lateness is shown from the first minute: a level below this would not be seen. */
+private const val WATER_MIN_LEVEL = 0.05f
+
+/**
+ * The water of lateness: it rises inside the ring as the plan runs past the exit, from nothing to the whole circle at
+ * [com.ilsecondodasinistra.parakeet.domain.LATE_WATER_FULL_MINUTES], and goes down as the delay is recovered. Two
+ * slow translucent waves (about 35% of coral where they overlap) lie behind the arcs and the number, so the text
+ * stays readable even when the circle is full. The level follows the real lateness with a soft spring. The waves
+ * move only while there is water, and stand still if the system animations are off.
+ */
+@Composable
+private fun LateWater(level: Float, strength: Float, modifier: Modifier = Modifier) {
+    val shown by animateFloatAsState(level, spring(dampingRatio = 1f, stiffness = 60f), label = "waterLevel")
+    // No water, no animation at all: the waves' clock is only running while they are on screen
+    if (shown > 0.001f) WaterWaves(shown, strength, modifier)
+}
+
+@Composable
+private fun WaterWaves(level: Float, strength: Float, modifier: Modifier) {
+    val context = LocalContext.current
+    val animated = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f }
+    val phase = if (animated) {
+        val transition = rememberInfiniteTransition(label = "waves")
+        transition.animateFloat(
+            0f, (2 * PI).toFloat(),
+            infiniteRepeatable(tween(WAVE_CYCLE_MILLIS, easing = LinearEasing)), label = "wavePhase",
+        ).value
+    } else 0f
+    Canvas(modifier) {
+        val radius = size.minDimension * WATER_RADIUS
+        val centre = Offset(size.width / 2, size.height / 2)
+        val inside = Path().apply { addOval(Rect(centre.x - radius, centre.y - radius, centre.x + radius, centre.y + radius)) }
+        val height = maxOf(level, WATER_MIN_LEVEL)
+        val surface = centre.y + radius - height * 2 * radius
+        // The waves flatten as the circle is almost empty or full, so the edge of the water never looks broken
+        val amplitude = radius * 0.05f * minOf(1f, height * 8f, (1f - height) * 8f).coerceAtLeast(0f)
+        clipPath(inside) {
+            wave(centre.x - radius, centre.x + radius, surface, amplitude, radius * 1.3f, phase, centre.y + radius + amplitude, LateColor.copy(alpha = 0.20f * strength))
+            wave(centre.x - radius, centre.x + radius, surface + amplitude * 0.5f, amplitude * 0.8f, radius * 0.85f, -phase * 1.4f + 1.7f, centre.y + radius + amplitude, LateColor.copy(alpha = 0.18f * strength))
+        }
+    }
+}
+
+private fun DrawScope.wave(left: Float, right: Float, surface: Float, amplitude: Float, wavelength: Float, phase: Float, bottom: Float, color: Color) {
+    val path = Path().apply {
+        moveTo(left, bottom)
+        var x = left
+        while (x <= right + STEP) {
+            lineTo(x, surface + amplitude * sin(2 * PI.toFloat() * (x - left) / wavelength + phase))
+            x += STEP
+        }
+        lineTo(right, bottom)
+        close()
+    }
+    drawPath(path, color)
+}
+
+private const val STEP = 6f
+private const val WAVE_CYCLE_MILLIS = 6000
 
 /** An arc on the ring, in degrees from the top. [colorIndex] -1 is the margin. [key] is "taskId#slot". */
 private data class ArcSpec(

@@ -15,6 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,6 +66,9 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -311,18 +315,32 @@ private fun StatusLine(state: TimelineState, soft: Color) {
         else -> stringResource(R.string.postwake_status_on_time) to soft
     }
     val color by animateColorAsState(target, tween(SLIDE_MILLIS / 2), label = "statusColor")
-    // (colour, thickness) of the arc this line is about; none when on time
-    val sample = when {
-        state.overflowMillis > 0 -> LateColor to 3.dp
-        state.marginMillis > 0 -> MarginColor to 8.dp
-        else -> null
-    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-        if (sample != null) {
-            Box(Modifier.width(22.dp).height(sample.second).clip(CircleShape).background(sample.first))
-            Spacer(Modifier.width(8.dp))
+        // A sample of what this line is about: the thick grey arc of the lead, or a wave of the water of lateness
+        when {
+            state.overflowMillis > 0 -> { WaveSample(LateColor); Spacer(Modifier.width(8.dp)) }
+            state.marginMillis > 0 -> {
+                Box(Modifier.width(22.dp).height(8.dp).clip(CircleShape).background(MarginColor))
+                Spacer(Modifier.width(8.dp))
+            }
         }
         Text(text, style = MaterialTheme.typography.titleSmall, color = color, textAlign = TextAlign.Center)
+    }
+}
+
+/** A small wave, the sign of the water of lateness. */
+@Composable
+private fun WaveSample(color: Color) {
+    Canvas(Modifier.size(width = 22.dp, height = 12.dp)) {
+        val path = Path()
+        val amplitude = size.height * 0.28f
+        var x = 0f
+        path.moveTo(0f, size.height / 2)
+        while (x <= size.width) {
+            path.lineTo(x, size.height / 2 + amplitude * kotlin.math.sin(2f * Math.PI.toFloat() * 1.5f * x / size.width))
+            x += 1.5f
+        }
+        drawPath(path, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
     }
 }
 
