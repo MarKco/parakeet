@@ -1,7 +1,6 @@
 package com.ilsecondodasinistra.parakeet.ui.postwake
 
 import android.os.Bundle
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.runtime.mutableStateOf
@@ -9,10 +8,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import android.graphics.Color
-import android.content.IntentFilter
-import android.content.Intent
-import android.content.Context
-import android.content.BroadcastReceiver
 import android.app.KeyguardManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -42,9 +37,6 @@ class PostWakeActivity : ComponentActivity() {
 
     /** The phone is locked and this screen is above the lock screen: dark, like the alarm. Otherwise the app theme. */
     private val onLockScreen = mutableStateOf(false)
-    private val userPresent = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) { onLockScreen.value = false }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +66,15 @@ class PostWakeActivity : ComponentActivity() {
                     }
                 }
                 LaunchedEffect(Unit) { viewModel.refresh() }
+                // Unlocking while this screen is up changes nothing in its lifecycle and the unlock broadcast does not
+                // reach it: while it is above the lock screen, look at the lock once a second. From then on it is an
+                // ordinary screen of the app.
+                LaunchedEffect(onLockScreen.value) {
+                    while (onLockScreen.value) {
+                        delay(LOCK_POLL_MILLIS)
+                        onLockScreen.value = isLocked()
+                    }
+                }
                 if (timeline != null) {
                     PostWakeScreen(timeline, onLockScreen = onLockScreen.value, onAct = viewModel::act, onClose = ::finish)
                 }
@@ -81,26 +82,16 @@ class PostWakeActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        // Unlocking while this screen is up: from then on it is an ordinary screen of the app
-        ContextCompat.registerReceiver(this, userPresent, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
-    }
-
     override fun onResume() {
         super.onResume()
         onLockScreen.value = isLocked()
-    }
-
-    override fun onStop() {
-        unregisterReceiver(userPresent)
-        super.onStop()
     }
 
     private fun isLocked(): Boolean = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     private companion object {
         const val NO_SESSION_MILLIS = 2_000L
+        const val LOCK_POLL_MILLIS = 1_000L
         const val LOCK_BACKGROUND = 0xFF080A06.toInt()
     }
 }
