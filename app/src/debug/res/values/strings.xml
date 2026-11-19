@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug build only: its own label, since it installs next to the release app -->
+    <string name="app_name" translatable="false">Parakeet debug</string>
+</resources>

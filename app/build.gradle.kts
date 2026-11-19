@@ -39,6 +39,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Its own package, so a debug build installs next to the Play version (and has its own data and signature)
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
