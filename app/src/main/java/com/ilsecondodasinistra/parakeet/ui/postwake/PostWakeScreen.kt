@@ -292,7 +292,11 @@ private fun CalloutBox(callout: Callout?, state: TimelineState, onDismiss: () ->
     }
 }
 
-/** Ahead, on time or late, in words: margin in grey (amber while it is being eaten), lateness in coral. */
+/**
+ * Ahead, on time or late, in words: the lead in grey (amber while it is being eaten), lateness in coral. A small
+ * sample of the arc it talks about stands in front of the words, with the arc's colour and thickness, so the line
+ * works as the legend of the ring: the thick grey arc is the lead, the thin coral one outside the ring is the delay.
+ */
 @Composable
 private fun StatusLine(state: TimelineState, soft: Color) {
     val (text, target) = when {
@@ -302,7 +306,19 @@ private fun StatusLine(state: TimelineState, soft: Color) {
         else -> stringResource(R.string.postwake_status_on_time) to soft
     }
     val color by animateColorAsState(target, tween(SLIDE_MILLIS / 2), label = "statusColor")
-    Text(text, style = MaterialTheme.typography.titleSmall, color = color, textAlign = TextAlign.Center)
+    // (colour, thickness) of the arc this line is about; none when on time
+    val sample = when {
+        state.overflowMillis > 0 -> LateColor to 3.dp
+        state.marginMillis > 0 -> MarginColor to 8.dp
+        else -> null
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        if (sample != null) {
+            Box(Modifier.width(22.dp).height(sample.second).clip(CircleShape).background(sample.first))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, style = MaterialTheme.typography.titleSmall, color = color, textAlign = TextAlign.Center)
+    }
 }
 
 @Composable
