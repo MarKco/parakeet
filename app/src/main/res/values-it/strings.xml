@@ -254,7 +254,7 @@
     <string name="channel_postwake_description">Cosa fare adesso, fino all\'uscita</string>
     <string name="notif_postwake_text">Esci alle %1$s</string>
     <string name="notif_postwake_all_done">Fatto tutto!</string>
-    <string name="notif_postwake_margin">%1$d min di margine · esci alle %2$s</string>
+    <string name="notif_postwake_margin">Sei in anticipo di %1$d min · esci alle %2$s</string>
     <string name="postwake_title">Prima di uscire</string>
     <string name="postwake_to_exit">fino alle %1$s</string>
     <string name="postwake_done">Fatto</string>
@@ -284,11 +284,11 @@
     <string name="postwake_open">Apri</string>
     <string name="task_add_continue">Aggiungi altra</string>
     <string name="task_added">Aggiunta: %1$s</string>
-    <string name="postwake_skip">Salta per oggi</string>
+    <string name="postwake_skip">Salta oggi</string>
     <string name="postwake_skipped">Saltata</string>
     <string name="postwake_late_row">In ritardo di %1$s</string>
     <string name="postwake_beyond_exit">Non entra prima dell\'uscita</string>
-    <string name="postwake_status_margin">Margine: %1$d min</string>
+    <string name="postwake_status_margin">Sei in anticipo di %1$d min</string>
     <string name="postwake_status_late">In ritardo di %1$d min</string>
     <string name="postwake_status_on_time">In orario</string>
     <string name="postwake_congrats">Complimenti, hai finito tutto e sei in anticipo!</string>
@@ -298,9 +298,9 @@
     <string name="channel_postwake_alert_description">Un solo avviso silenzioso quando il piano non entra più prima dell\'uscita</string>
     <string name="notif_postwake_alert_title">Sei in ritardo</string>
     <string name="notif_postwake_alert_text">Esci con %1$d min di ritardo</string>
-    <string name="notif_postwake_title_now">Ora: %1$s</string>
-    <string name="notif_postwake_text_next">Poi: %1$s · esci alle %2$s</string>
     <string name="postwake_callout_gained">Tempo guadagnato! Sei in anticipo di %1$d min</string>
     <string name="postwake_callout_late">Da qui sei in ritardo</string>
+    <string name="notif_postwake_title_now">Ora: %1$s</string>
+    <string name="notif_postwake_text_next">Poi: %1$s · esci alle %2$s</string>
     <string name="postwake_callout_lead_gone">L\'anticipo è finito: da qui sei in ritardo</string>
 </resources>

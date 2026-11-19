@@ -268,7 +268,7 @@
     <string name="channel_postwake_description">What to do next, until you leave</string>
     <string name="notif_postwake_text">Leave at %1$s</string>
     <string name="notif_postwake_all_done">All done!</string>
-    <string name="notif_postwake_margin">%1$d min to spare · leave at %2$s</string>
+    <string name="notif_postwake_margin">You\'re %1$d min ahead · leave at %2$s</string>
     <string name="postwake_title">Before you leave</string>
     <string name="postwake_to_exit">until %1$s</string>
     <string name="postwake_done">Done</string>
@@ -298,11 +298,11 @@
     <string name="postwake_open">Open</string>
     <string name="task_add_continue">Add another</string>
     <string name="task_added">Added: %1$s</string>
-    <string name="postwake_skip">Skip for today</string>
+    <string name="postwake_skip">Skip today</string>
     <string name="postwake_skipped">Skipped</string>
     <string name="postwake_late_row">Running late: %1$s</string>
     <string name="postwake_beyond_exit">Won\'t fit before you leave</string>
-    <string name="postwake_status_margin">Margin: %1$d min</string>
+    <string name="postwake_status_margin">You\'re ahead by %1$d min</string>
     <string name="postwake_status_late">Running late: %1$d min</string>
     <string name="postwake_status_on_time">On schedule</string>
     <string name="postwake_congrats">Well done, you\'ve finished everything and you\'re ahead of time!</string>
@@ -312,9 +312,9 @@
     <string name="channel_postwake_alert_description">One quiet alert when the plan no longer fits before you leave</string>
     <string name="notif_postwake_alert_title">You\'re running late</string>
     <string name="notif_postwake_alert_text">You\'ll leave %1$d min late</string>
-    <string name="notif_postwake_title_now">Now: %1$s</string>
-    <string name="notif_postwake_text_next">Next: %1$s · leave at %2$s</string>
     <string name="postwake_callout_gained">Time gained! You\'re ahead by %1$d min</string>
     <string name="postwake_callout_late">From here you\'re running late</string>
+    <string name="notif_postwake_title_now">Now: %1$s</string>
+    <string name="notif_postwake_text_next">Next: %1$s · leave at %2$s</string>
     <string name="postwake_callout_lead_gone">Your lead is gone: from here you\'re running late</string>
 </resources>
