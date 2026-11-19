@@ -2,25 +2,38 @@ What time should you get up tomorrow?
 
 It sounds like an easy question, but it isn't. It all depends on what you need to do before you leave: a shower, breakfast, a coffee, walking the dog… The only thing you really know is when you have to be out of the door.
 
-Parakeet does the math for you. Set your exit time, pick the activities you'll do tomorrow morning, and Parakeet works out when to wake you up: not a minute earlier, not a minute later.
+Parakeet does the math for you. Set your exit time, pick the activities you'll do in the morning, and Parakeet works out when to wake you up: not a minute earlier, not a minute later. And the alarm rings right in the app.
 
 HOW IT WORKS
 • Set the time you leave home.
-• Tap the activities you'll do tomorrow: each one has a duration you can change.
-• At the top you instantly see your wake-up time, the day, and how long you need to get ready.
-• Tap "Set alarm" and the alarm is created in your phone's Clock app, without duplicates.
+• Tap the activities you'll do: each one has a duration you can change.
+• At the top you instantly see your wake-up time, the day, and how long you need to get ready, on a radio-clock style display.
+• The alarm rings by itself, even over the lock screen, with the sound of your choice and gradually rising volume.
 • At your exit time Parakeet can send you a notification ("Time to leave!"), with a text of your choice.
 
+TWO WAYS TO USE IT
+• Simple: your exit time and tomorrow's activities, one alarm at a time.
+• Scheduled: create your routines (workdays, weekend, gym…) and assign them to weekdays. Parakeet re-arms the alarm by itself, every day. A different day this week? Change just that one, skipping it is one tap.
+You choose at first start and can switch any time in Settings, without losing anything.
+
+TURN IT OFF YOUR WAY
+Pick how to stop the alarm: slide or long-press, solve a sum, shake the phone, or scan a QR code of your choice (the coffee pot in the kitchen, say). Snooze is optional.
+
+HELPFUL REMINDERS (OPTIONAL)
+• A silent notification before the alarm, so you can skip it if you're already up.
+• An evening summary with tomorrow's alarm and a "Skip" button.
+
 WHY YOU'LL LIKE IT
-• One clear screen: the result is always in front of you, on a radio-clock style display.
-• Your activities, your durations: add, edit and delete whenever you like (swipe to delete, with "Undo" if you slip).
+• Your activities, your durations: add, edit and delete whenever you like.
 • A short guided first run with a preview of your wake-up time.
 • Light and dark theme, designed for tablets too.
 • No account, no ads, no network connection: your activities stay on your device.
 
 UPDATING FROM THE PREVIOUS VERSION
-Your activities and exit time are kept automatically.
+Your activities and exit time are kept automatically. If you prefer, you can keep using the system Clock app: the choice is in Settings.
 
-The alarm is created in the system Clock app. For the notification at exactly your exit time, Parakeet may ask you to allow notifications and "Alarms & reminders" access: if you'd rather not, the app still works, but the notification may arrive a few minutes late.
+PERMISSIONS
+• Alarms & reminders, notifications and full-screen: needed so the alarm rings at the exact time and shows over the lock screen.
+• Camera: only if you choose QR code dismissal. The image is processed on the phone and is never saved or sent.
 
 It's everything you need to get up early, but not a minute earlier. Try Parakeet today, wake up happier tomorrow.
