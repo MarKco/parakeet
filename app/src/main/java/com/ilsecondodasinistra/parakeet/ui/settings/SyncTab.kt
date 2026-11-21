@@ -219,6 +219,7 @@ private fun PairingDialog(devices: List<DeviceInfo>, onThis: (DeviceInfo) -> Uni
 @Composable
 internal fun BackupTab(viewModel: SyncViewModel = hiltViewModel()) {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
 
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -231,9 +232,9 @@ internal fun BackupTab(viewModel: SyncViewModel = hiltViewModel()) {
         if (uri != null) scope.launch {
             val r = viewModel.restoreFrom(context.contentResolver, uri)
             val text = r.fold(
-                onSuccess = { context.getString(R.string.backup_restored, it) },
+                onSuccess = { resources.getString(R.string.backup_restored, it) },
                 onFailure = {
-                    context.getString(
+                    resources.getString(
                         when (it.message) { "format" -> R.string.backup_bad_format; "newer" -> R.string.backup_newer; else -> R.string.backup_unreadable },
                     )
                 },
