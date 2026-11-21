@@ -79,6 +79,8 @@ internal enum class SettingsTab(val title: Int) {
     Alarm(R.string.settings_alarm_section),
     Reminders(R.string.settings_reminders),
     AfterWake(R.string.settings_postwake),
+    Sync(R.string.settings_tab_sync),
+    Backup(R.string.settings_tab_backup),
 }
 
 /** The tab left open last, kept while the app lives: Settings reopens where it was. */
@@ -123,6 +125,8 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                             if (state.alarmMode == AlarmMode.INTERNAL) RemindersSection(state, viewModel) else NeedsInternalCard(goToAlarm)
                         SettingsTab.AfterWake ->
                             if (state.alarmMode == AlarmMode.INTERNAL) PostWakeSection(state, viewModel) else NeedsInternalCard(goToAlarm)
+                        SettingsTab.Sync -> SyncTab()
+                        SettingsTab.Backup -> BackupTab()
                     }
                 }
             }
