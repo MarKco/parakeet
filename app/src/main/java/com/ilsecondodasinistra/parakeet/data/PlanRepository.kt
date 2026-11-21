@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -26,6 +27,8 @@ class PlanRepository @Inject constructor(
     private val dao: PlanDao,
     private val tasks: TaskRepository,
     private val settings: SettingsRepository,
+    private val sync: SyncDao,
+    private val clock: Clock,
 ) {
 
     val routines: Flow<List<Routine>> = combine(dao.observeRoutines(), dao.observeRoutineTasks()) { list, links ->
@@ -48,34 +51,45 @@ class PlanRepository @Inject constructor(
 
     // ---- routines ----------------------------------------------------------------------------
 
-    /** Creates or updates [routine]; its days are removed from every other routine. Returns its id. */
-    suspend fun saveRoutine(routine: Routine): Long {
+    /**
+     * Creates or updates [routine]; its days are removed from every other routine. Returns its id.
+     * A [seed] routine (onboarding, 5.0 conversion) keeps `updatedAt` 0: it does not travel to other devices.
+     */
+    suspend fun saveRoutine(routine: Routine, seed: Boolean = false): Long {
+        val stamp = if (seed) 0 else clock.millis()
         val id = if (routine.id == 0L) {
-            dao.insertRoutine(routine.toEntity().copy(id = 0, position = dao.nextRoutinePosition()))
+            dao.insertRoutine(routine.toEntity().copy(id = 0, position = dao.nextRoutinePosition(), uid = newUid(), updatedAt = stamp))
         } else {
-            dao.updateRoutine(routine.toEntity()); routine.id
+            val old = dao.routineById(routine.id)
+            dao.updateRoutine(routine.toEntity().copy(uid = old?.uid ?: newUid(), updatedAt = stamp)); routine.id
         }
         dao.replaceRoutineTasks(id, routine.taskIds)
-        if (routine.days.isNotEmpty()) setDays(id, routine.days)
+        if (routine.days.isNotEmpty()) setDays(id, routine.days, stamp)
         return id
     }
 
     /** Weekly assignment, exclusive: a weekday belongs to one routine at most. */
-    suspend fun setDays(routineId: Long, days: Set<DayOfWeek>) {
+    suspend fun setDays(routineId: Long, days: Set<DayOfWeek>, stamp: Long = clock.millis()) {
         val all = dao.routines()
+        val now = clock.millis()
         val updated = all.map {
             when {
-                it.id == routineId -> it.copy(daysMask = days.toMask())
-                it.daysMask and days.toMask() != 0 -> it.copy(daysMask = it.daysMask and days.toMask().inv())
+                it.id == routineId -> it.copy(daysMask = days.toMask(), updatedAt = stamp)
+                it.daysMask and days.toMask() != 0 -> it.copy(daysMask = it.daysMask and days.toMask().inv(), updatedAt = now)
                 else -> it
             }
         }
         dao.updateRoutines(updated.filterIndexed { i, r -> r != all[i] })
     }
 
-    suspend fun setEnabled(routine: Routine, enabled: Boolean) = dao.updateRoutine(routine.copy(enabled = enabled).toEntity())
+    suspend fun setEnabled(routine: Routine, enabled: Boolean) {
+        val old = dao.routineById(routine.id) ?: return
+        dao.updateRoutine(old.copy(enabled = enabled, updatedAt = clock.millis()))
+    }
 
     suspend fun deleteRoutine(id: Long) {
+        val old = dao.routineById(id)
+        if (old != null && old.updatedAt > 0) sync.putTombstone(TombstoneEntity(TombstoneEntity.ROUTINE, old.uid, id, clock.millis()))
         dao.deleteDayPlansOf(id)
         dao.clearRoutineTasks(id)
         dao.deleteRoutine(id)
@@ -89,9 +103,16 @@ class PlanRepository @Inject constructor(
 
     // ---- one-time day plans ------------------------------------------------------------------
 
-    suspend fun setDayPlan(plan: DayPlan) = dao.upsertDayPlan(plan.toEntity())
+    suspend fun setDayPlan(plan: DayPlan, seed: Boolean = false) {
+        sync.deleteTombstone(TombstoneEntity.DAY_PLAN, plan.date.toEpochDay().toString())
+        dao.upsertDayPlan(plan.toEntity().copy(updatedAt = if (seed) 0 else clock.millis()))
+    }
 
-    suspend fun clearDayPlan(date: LocalDate) = dao.deleteDayPlan(date.toEpochDay())
+    suspend fun clearDayPlan(date: LocalDate) {
+        val old = dao.dayPlanOf(date.toEpochDay()) ?: return
+        dao.deleteDayPlan(old.epochDay)
+        if (old.updatedAt > 0) sync.putTombstone(TombstoneEntity(TombstoneEntity.DAY_PLAN, old.epochDay.toString(), old.epochDay, clock.millis()))
+    }
 
     /** Day plans of past days are useless: removed now and then. */
     suspend fun prune(today: LocalDate) = dao.deleteDayPlansBefore(today.minusDays(1).toEpochDay())
@@ -111,11 +132,12 @@ class PlanRepository @Inject constructor(
             val checked = tasks.tasks.first().filter { it.checked }.map { it.id }.toSet()
             val id = saveRoutine(
                 Routine(name = defaultName, color = RoutineColors.first(), exitTime = s.exitTime, taskIds = checked),
+                seed = true,
             )
             val active = s.activeAlarm
             if (active != null && active.wakeAtMillis > System.currentTimeMillis() && s.alarmMode == AlarmMode.INTERNAL) {
                 val date = Instant.ofEpochMilli(active.exitAtMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-                setDayPlan(DayPlan.UseRoutine(date, id))
+                setDayPlan(DayPlan.UseRoutine(date, id), seed = true)
             }
         }
         settings.markPlanMigrated()

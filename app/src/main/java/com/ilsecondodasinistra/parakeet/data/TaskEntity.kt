@@ -20,10 +20,14 @@ data class TaskEntity(
     val checked: Boolean,
     val position: Int,
     @ColumnInfo(defaultValue = "0") val buffer: Boolean = false,
+    /** Identity across devices (the sync); [id] stays local. */
+    @ColumnInfo(defaultValue = "''") val uid: String = "",
+    /** Last edit (ms). 0 = never touched since it was seeded: it does not travel (see docs/sync.md). */
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
 )
 
 fun TaskEntity.toDomain() = Task(id, name, minutes, checked, position, buffer)
-fun Task.toEntity() = TaskEntity(id, name, minutes, checked, position, buffer)
+fun Task.toEntity(uid: String = newUid(), updatedAt: Long = 0) = TaskEntity(id, name, minutes, checked, position, buffer, uid, updatedAt)
 
 @Dao
 interface TaskDao {
@@ -32,6 +36,9 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks")
     suspend fun count(): Int
+
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun byId(id: Long): TaskEntity?
 
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM tasks")
     suspend fun nextPosition(): Int
@@ -53,11 +60,12 @@ interface TaskDao {
 }
 
 @Database(
-    entities = [TaskEntity::class, RoutineEntity::class, RoutineTaskEntity::class, DayPlanEntity::class],
-    version = 3,
+    entities = [TaskEntity::class, RoutineEntity::class, RoutineTaskEntity::class, DayPlanEntity::class, TombstoneEntity::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun planDao(): PlanDao
+    abstract fun syncDao(): SyncDao
 }

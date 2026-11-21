@@ -546,17 +546,18 @@ class MainViewModel @Inject constructor(
     ) = viewModelScope.launch {
         settings.setAlarmMode(if (internalAlarm && canUseInternalAlarm()) AlarmMode.INTERNAL else AlarmMode.CLOCK)
         settings.setExitTime(exitTime)
-        val ids = if (tasks.count() == 0) chosen.map { tasks.add(it.name, it.minutes, buffer = it.buffer) }
+        val ids = if (tasks.count() == 0) chosen.map { tasks.add(it.name, it.minutes, buffer = it.buffer, seed = true) }
         else tasks.tasks.first().filter { it.checked }.map { it.id }
         val id = plan.saveRoutine(
             Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids.toSet(), days = days),
+            seed = true,
         )
         settings.setPlanMode(if (scheduled) PlanMode.SCHEDULED else PlanMode.SIMPLE)
         // Simple mode sets no alarm by itself: the user presses "Set alarm", as before
         if (scheduled && days.isEmpty()) {
             val total = chosen.sumOf { it.minutes }
             val first = WakeUpCalculator.plan(exitTime, listOf(Task(name = "", minutes = total, checked = true)), LocalDateTime.now(clock))
-            plan.setDayPlan(DayPlan.UseRoutine(first.exitAt.toLocalDate(), id))
+            plan.setDayPlan(DayPlan.UseRoutine(first.exitAt.toLocalDate(), id), seed = true)
         }
         settings.markPlanMigrated()
         settings.setNotifyOnExit(notify)

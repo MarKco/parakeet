@@ -1,5 +1,6 @@
 package com.ilsecondodasinistra.parakeet.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Insert
@@ -22,6 +23,8 @@ data class RoutineEntity(
     val daysMask: Int,
     val enabled: Boolean,
     val position: Int,
+    @ColumnInfo(defaultValue = "''") val uid: String = "",
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
 )
 
 /** Which catalog activities a routine uses. Rows of deleted tasks are harmless (ignored) and come back on undo. */
@@ -36,6 +39,7 @@ data class DayPlanEntity(
     val routineId: Long?,
     val exitMinute: Int?,
     val taskIds: String,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
 )
 
 @Dao
@@ -51,6 +55,12 @@ interface PlanDao {
 
     @Query("SELECT COUNT(*) FROM routines")
     suspend fun routineCount(): Int
+
+    @Query("SELECT * FROM routines WHERE id = :id")
+    suspend fun routineById(id: Long): RoutineEntity?
+
+    @Query("SELECT * FROM day_plans WHERE epochDay = :epochDay")
+    suspend fun dayPlanOf(epochDay: Long): DayPlanEntity?
 
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM routines")
     suspend fun nextRoutinePosition(): Int
@@ -118,5 +128,23 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `tasks` ADD COLUMN `buffer` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/** 5.2 → 5.3: identity and last-edit time for the sync, and the tombstones of what was deleted. */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        for (table in listOf("tasks", "routines")) {
+            db.execSQL("ALTER TABLE `$table` ADD COLUMN `uid` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `$table` ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
+            // What exists now was made by the user: it travels (updatedAt 1 = "old", it loses against any real edit)
+            db.execSQL("UPDATE `$table` SET `uid` = lower(hex(randomblob(16))), `updatedAt` = 1")
+        }
+        db.execSQL("ALTER TABLE `day_plans` ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE `day_plans` SET `updatedAt` = 1")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `sync_tombstones` (`kind` TEXT NOT NULL, `key` TEXT NOT NULL, " +
+                "`localId` INTEGER NOT NULL, `deletedAt` INTEGER NOT NULL, PRIMARY KEY(`kind`, `key`))",
+        )
     }
 }
