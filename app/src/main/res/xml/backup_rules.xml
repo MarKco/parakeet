@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The sync choices (folder address, device id) belong to this phone: a restored copy would share its id with the old phone. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/sync.preferences_pb" />
+</full-backup-content>

@@ -48,6 +48,8 @@ import kotlinx.serialization.Serializable
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @javax.inject.Inject lateinit var syncManager: com.ilsecondodasinistra.parakeet.sync.SyncManager
+
     /** Keeps the splash screen until the first state (after the one-time data migration) is ready. */
     private var ready = false
 
@@ -65,6 +67,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // With the app in front: sync once on opening, then every 15 minutes
+        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { syncManager.foreground() } }
         setContent {
             ParakeetTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {

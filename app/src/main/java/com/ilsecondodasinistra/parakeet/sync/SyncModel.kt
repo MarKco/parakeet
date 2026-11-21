@@ -140,6 +140,7 @@ data class BackupFile(
 /** A device seen in the folder. */
 data class DeviceInfo(val deviceId: String, val deviceName: String, val writtenAt: Long, val device: DeviceSettings)
 
+@Serializable
 data class SyncResult(
     val ok: Boolean,
     /** Devices whose files were read (names). */

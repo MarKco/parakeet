@@ -216,6 +216,33 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         )
     }
 
+    // ---- the settings that belong to this phone (the sync writes them in its file, never merges them) -----------------
+
+    /** alarm_mode, notify_on_exit, exit_minute, paused_until: only the ones the user has set. */
+    suspend fun deviceValues(): Map<String, String> {
+        val p = context.dataStore.data.first()
+        return buildMap {
+            p[Keys.alarmMode]?.let { put(DEVICE_ALARM_MODE, it) }
+            p[Keys.notifyOnExit]?.let { put(DEVICE_NOTIFY_ON_EXIT, it.toString()) }
+            p[Keys.exitMinuteOfDay]?.let { put(DEVICE_EXIT_MINUTE, it.toString()) }
+            p[Keys.pausedUntil]?.let { put(DEVICE_PAUSED_UNTIL, it.toString()) }
+        }
+    }
+
+    /** Puts [values] back; with [onlyMissing] a setting this phone already has is left as it is. */
+    suspend fun applyDeviceValues(values: Map<String, String>, onlyMissing: Boolean) {
+        context.dataStore.edit { p ->
+            values[DEVICE_ALARM_MODE]?.takeIf { v -> AlarmMode.entries.any { it.name == v } }
+                ?.let { if (!onlyMissing || Keys.alarmMode !in p) p[Keys.alarmMode] = it }
+            values[DEVICE_NOTIFY_ON_EXIT]?.toBooleanStrictOrNull()
+                ?.let { if (!onlyMissing || Keys.notifyOnExit !in p) p[Keys.notifyOnExit] = it }
+            values[DEVICE_EXIT_MINUTE]?.toIntOrNull()
+                ?.let { if (!onlyMissing || Keys.exitMinuteOfDay !in p) p[Keys.exitMinuteOfDay] = it }
+            values[DEVICE_PAUSED_UNTIL]?.toLongOrNull()
+                ?.let { if (!onlyMissing || Keys.pausedUntil !in p) p[Keys.pausedUntil] = it }
+        }
+    }
+
     suspend fun setExitTime(time: LocalTime) = context.dataStore.edit {
         it[Keys.exitMinuteOfDay] = time.hour * 60 + time.minute
     }
@@ -333,4 +360,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun isPlanMigrated(): Boolean = context.dataStore.data.first()[Keys.planMigrated] ?: false
 
     suspend fun markPlanMigrated() = context.dataStore.edit { it[Keys.planMigrated] = true }
+
+    companion object {
+        const val DEVICE_ALARM_MODE = "alarm_mode"
+        const val DEVICE_NOTIFY_ON_EXIT = "notify_on_exit"
+        const val DEVICE_EXIT_MINUTE = "exit_minute"
+        const val DEVICE_PAUSED_UNTIL = "paused_until"
+    }
 }
