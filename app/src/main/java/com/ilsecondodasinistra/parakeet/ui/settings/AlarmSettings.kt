@@ -105,8 +105,6 @@ fun AlarmSection(state: MainUiState, viewModel: MainViewModel) {
         if (wantsInternal && viewModel.canUseInternalAlarm()) { viewModel.setAlarmMode(AlarmMode.INTERNAL); wantsInternal = false }
     }
 
-    Text(stringResource(R.string.settings_alarm_section), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
-
     ChoiceCard(
         selected = state.alarmMode == AlarmMode.INTERNAL,
         title = stringResource(R.string.mode_internal),

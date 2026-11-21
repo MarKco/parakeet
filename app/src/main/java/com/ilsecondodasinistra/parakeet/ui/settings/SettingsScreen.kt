@@ -64,10 +64,104 @@ import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.alarm.Notifications
 import com.ilsecondodasinistra.parakeet.ui.main.MainUiState
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.ilsecondodasinistra.parakeet.data.AlarmMode
+import kotlinx.coroutines.launch
+
+/** The pages of Settings, in the order of the tab bar. */
+internal enum class SettingsTab(val title: Int) {
+    General(R.string.settings_tab_general),
+    Alarm(R.string.settings_alarm_section),
+    Reminders(R.string.settings_reminders),
+    AfterWake(R.string.settings_postwake),
+}
+
+/** The tab left open last, kept while the app lives: Settings reopens where it was. */
+private var lastSettingsTab = SettingsTab.General
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> Unit) {
+    val pagerState = rememberPagerState(initialPage = lastSettingsTab.ordinal) { SettingsTab.entries.size }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(pagerState.currentPage) { lastSettingsTab = SettingsTab.entries[pagerState.currentPage] }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            PrimaryScrollableTabRow(selectedTabIndex = pagerState.currentPage, edgePadding = 8.dp) {
+                SettingsTab.entries.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = { Text(stringResource(tab.title)) },
+                    )
+                }
+            }
+            HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
+                val goToAlarm = { scope.launch { pagerState.animateScrollToPage(SettingsTab.Alarm.ordinal) }; Unit }
+                SettingsPage {
+                    when (SettingsTab.entries[page]) {
+                        SettingsTab.General -> GeneralTab(state, viewModel)
+                        SettingsTab.Alarm -> AlarmSection(state, viewModel)
+                        SettingsTab.Reminders ->
+                            if (state.alarmMode == AlarmMode.INTERNAL) RemindersSection(state, viewModel) else NeedsInternalCard(goToAlarm)
+                        SettingsTab.AfterWake ->
+                            if (state.alarmMode == AlarmMode.INTERNAL) PostWakeSection(state, viewModel) else NeedsInternalCard(goToAlarm)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One page of the pager: scrolls on its own, content no wider than a phone. */
+@Composable
+internal fun SettingsPage(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier.widthIn(max = 640.dp).padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) { content() }
+    }
+}
+
+/** Reminders and "After the alarm" only exist with Parakeet's own alarm: say so, and take the way to switch it on. */
+@Composable
+private fun NeedsInternalCard(onGoToAlarm: () -> Unit) {
+    SettingsCard {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.needs_internal_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.needs_internal_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FilledTonalButton(onClick = onGoToAlarm, modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.needs_internal_button))
+            }
+        }
+    }
+}
+
+/** Plan mode, the "time to leave" notification (with its exact-timing permission and text). */
+@Composable
+private fun GeneralTab(state: MainUiState, viewModel: MainViewModel) {
     val context = LocalContext.current
     var exactAllowed by remember { mutableStateOf(viewModel.canScheduleExact()) }
     var notificationsBlocked by remember { mutableStateOf(false) }
@@ -86,118 +180,93 @@ fun SettingsScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
         viewModel.setNotifyOnExit(granted)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier.widthIn(max = 640.dp).padding(horizontal = 16.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    PlanModeSection(state, viewModel)
+
+
+    // Notification switch: the whole row toggles
+    SettingsCard {
+        Row(
+            Modifier
+                .toggleable(
+                    value = state.notifyOnExit,
+                    role = Role.Switch,
+                    onValueChange = { enable ->
+                        if (enable && Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context)) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else viewModel.setNotifyOnExit(enable)
+                    },
+                )
+                .heightIn(min = 72.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlanModeSection(state, viewModel)
-            AlarmSection(state, viewModel)
-
-            // Notification switch: the whole row toggles
-            SettingsCard {
-                Row(
-                    Modifier
-                        .toggleable(
-                            value = state.notifyOnExit,
-                            role = Role.Switch,
-                            onValueChange = { enable ->
-                                if (enable && Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context)) {
-                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else viewModel.setNotifyOnExit(enable)
-                            },
-                        )
-                        .heightIn(min = 72.dp)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.notify_on_exit), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.notify_on_exit_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Switch(checked = state.notifyOnExit, onCheckedChange = null)
-                }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.notify_on_exit), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.notify_on_exit_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (notificationsBlocked) {
-                SettingsCard(container = MaterialTheme.colorScheme.errorContainer) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.notif_permission_denied), color = MaterialTheme.colorScheme.onErrorContainer)
-                        TextButton(onClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                            )
-                        }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.open_system_settings)) }
-                    }
-                }
-            }
-
-            if (state.notifyOnExit) {
-                SettingsCard {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.exact_alarm_title), style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            stringResource(if (exactAllowed) R.string.exact_alarm_granted else R.string.exact_alarm_denied),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (!exactAllowed) {
-                            FilledTonalButton(
-                                onClick = {
-                                    context.startActivity(
-                                        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
-                                    )
-                                },
-                                modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp),
-                            ) { Text(stringResource(R.string.exact_alarm_allow)) }
-                        }
-                    }
-                }
-
-                SettingsCard {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.exit_text_title), style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(
-                            value = text,
-                            onValueChange = { text = it; viewModel.setExitText(it) },
-                            placeholder = { Text(stringResource(R.string.notification_exit_text)) },
-                            supportingText = { Text(stringResource(R.string.exit_text_hint)) },
-                            shape = MaterialTheme.shapes.medium,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        if (text.isNotEmpty()) {
-                            TextButton(onClick = { text = ""; viewModel.setExitText("") }, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(stringResource(R.string.exit_text_reset))
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (state.alarmMode == com.ilsecondodasinistra.parakeet.data.AlarmMode.INTERNAL) {
-                RemindersSection(state, viewModel)
-                PostWakeSection(state, viewModel)
+            Spacer(Modifier.width(16.dp))
+            Switch(checked = state.notifyOnExit, onCheckedChange = null)
+        }
+    }
+    if (notificationsBlocked) {
+        SettingsCard(container = MaterialTheme.colorScheme.errorContainer) {
+            Column(Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.notif_permission_denied), color = MaterialTheme.colorScheme.onErrorContainer)
+                TextButton(onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                    )
+                }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.open_system_settings)) }
             }
         }
+    }
+
+    if (state.notifyOnExit) {
+        SettingsCard {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.exact_alarm_title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(if (exactAllowed) R.string.exact_alarm_granted else R.string.exact_alarm_denied),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (!exactAllowed) {
+                    FilledTonalButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
+                            )
+                        },
+                        modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.exact_alarm_allow)) }
+                }
+            }
+        }
+
+        SettingsCard {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.exit_text_title), style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it; viewModel.setExitText(it) },
+                    placeholder = { Text(stringResource(R.string.notification_exit_text)) },
+                    supportingText = { Text(stringResource(R.string.exit_text_hint)) },
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (text.isNotEmpty()) {
+                    TextButton(onClick = { text = ""; viewModel.setExitText("") }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.exit_text_reset))
+                    }
+                }
+            }
         }
     }
 }
 
 /** Simple (wake-up time + activities, one alarm at a time) or scheduled (weekday routines). Always switchable. */
 @Composable
-private fun PlanModeSection(state: MainUiState, viewModel: MainViewModel) {
+internal fun PlanModeSection(state: MainUiState, viewModel: MainViewModel) {
     Text(
         stringResource(R.string.settings_mode_section),
         style = MaterialTheme.typography.titleSmall,
@@ -220,17 +289,11 @@ private fun PlanModeSection(state: MainUiState, viewModel: MainViewModel) {
 
 /** Notifications before the alarm: "upcoming · skip" (2 h before) and the evening summary. */
 @Composable
-private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
+internal fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
     var pickEvening by remember { mutableStateOf(false) }
     var pickOffset by remember { mutableStateOf(false) }
     val prefs = state.planPrefs
     val evening = java.time.LocalTime.of(prefs.eveningMinute / 60, prefs.eveningMinute % 60)
-    Text(
-        stringResource(R.string.settings_reminders),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-    )
     SettingsCard {
         Column {
             SwitchRow(
@@ -316,15 +379,9 @@ private fun RemindersSection(state: MainUiState, viewModel: MainViewModel) {
  * ring + list screen, so it is dimmed without it.
  */
 @Composable
-private fun PostWakeSection(state: MainUiState, viewModel: MainViewModel) {
+internal fun PostWakeSection(state: MainUiState, viewModel: MainViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = state.postWake
-    Text(
-        stringResource(R.string.settings_postwake),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-    )
     SettingsCard {
         Column {
             SwitchRow(
@@ -387,7 +444,7 @@ private fun offsetLabel(minutes: Int): String = when {
 
 /** A setting value always on show; the whole row opens its editor (dimmed while its switch is off). */
 @Composable
-private fun ValueRow(
+internal fun ValueRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     active: Boolean,
@@ -418,7 +475,7 @@ private fun ValueRow(
 }
 
 @Composable
-private fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+internal fun SwitchRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
         Modifier
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
@@ -437,7 +494,7 @@ private fun SwitchRow(title: String, description: String, checked: Boolean, onCh
 }
 
 @Composable
-private fun SettingsCard(
+internal fun SettingsCard(
     container: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceContainer,
     content: @Composable () -> Unit,
 ) {

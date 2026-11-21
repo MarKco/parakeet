@@ -323,4 +323,8 @@
     <string name="buffer_hint_title">Add time for the unexpected?</string>
     <string name="buffer_hint_body">A cushion of 5 minutes that is used up if something runs over, with no alerts.</string>
     <string name="buffer_hint_action">Add</string>
+    <string name="settings_tab_general">General</string>
+    <string name="needs_internal_title">Needs the Parakeet alarm</string>
+    <string name="needs_internal_desc">These settings apply when Parakeet itself rings the alarm. Switch it on in the Alarm tab.</string>
+    <string name="needs_internal_button">Go to Alarm</string>
 </resources>

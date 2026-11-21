@@ -309,4 +309,8 @@
     <string name="buffer_hint_title">Aggiungi tempo per gli imprevisti?</string>
     <string name="buffer_hint_body">Un cuscinetto di 5 minuti che si consuma se qualcosa sfora, senza avvisi.</string>
     <string name="buffer_hint_action">Aggiungi</string>
+    <string name="settings_tab_general">Generale</string>
+    <string name="needs_internal_title">Serve la sveglia di Parakeet</string>
+    <string name="needs_internal_desc">Queste impostazioni valgono quando a suonare è Parakeet stessa. Attivala nella scheda Sveglia.</string>
+    <string name="needs_internal_button">Vai a Sveglia</string>
 </resources>
