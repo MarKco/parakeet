@@ -114,7 +114,6 @@ class SyncManager @Inject constructor(
         }
         if (deviceName != null) prefs.setDeviceName(deviceName)
         prefs.setFolder(uri.toString())
-        prefs.setEnabled(true)
         val s = prefs.current()
         if (!s.paired) {
             val id = prefs.deviceId()
@@ -124,6 +123,8 @@ class SyncManager @Inject constructor(
             if (others.isNotEmpty()) { _pairing.value = others; return }
             prefs.setPaired(true)
         }
+        // Switched on only now: while the question is open no round may write a file under an id this phone is about to drop
+        prefs.setEnabled(true)
         syncNow()
     }
 
@@ -152,6 +153,7 @@ class SyncManager @Inject constructor(
         prefs.setReadOwnNext(readOwn)
         prefs.setPaired(true)
         _pairing.value = null
+        prefs.setEnabled(true)
         syncNow()
     }
 }
