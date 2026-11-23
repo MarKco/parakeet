@@ -119,6 +119,10 @@ fun DayOfWeek.letter(): String = getDisplayName(TextStyle.NARROW_STANDALONE, Loc
 fun Set<DayOfWeek>.shortList(): String =
     sorted().joinToString(", ") { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
 
+/** Weekday names in full, in week order and in the phone's language: "lunedì, martedì e giovedì". */
+fun Set<DayOfWeek>.fullList(): String =
+    android.icu.text.ListFormatter.getInstance(Locale.getDefault()).format(sorted().map { it.fullName() })
+
 // ---- the radio-clock display: next alarm + countdown ------------------------------------------------
 
 /**

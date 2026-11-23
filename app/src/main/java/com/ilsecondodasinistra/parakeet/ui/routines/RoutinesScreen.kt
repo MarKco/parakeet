@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +71,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +93,7 @@ import com.ilsecondodasinistra.parakeet.ui.main.BufferHint
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel.TaskEdit
 import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
+import com.ilsecondodasinistra.parakeet.ui.main.fullList
 import com.ilsecondodasinistra.parakeet.ui.main.fullName
 import com.ilsecondodasinistra.parakeet.ui.main.letter
 import com.ilsecondodasinistra.parakeet.ui.main.shortList
@@ -580,16 +583,11 @@ fun RoutineEditorScreen(
         } else {
             val day = DayOfWeek.of(ask.removePrefix("day:").toInt())
             owners[day]?.let { owner ->
-                AlertDialog(
-                    onDismissRequest = { conflictAsk = null },
-                    title = { Text(stringResource(R.string.routine_conflict_title)) },
-                    text = { Text(stringResource(R.string.routine_conflict_day_body, day.fullName().replaceFirstChar { it.uppercase() }, owner.name)) },
-                    confirmButton = {
-                        TextButton(onClick = { disabledOthers = disabledOthers + owner.id; applyDay(day); conflictAsk = null }) {
-                            Text(stringResource(R.string.routine_conflict_turn_off, owner.name))
-                        }
-                    },
-                    dismissButton = { TextButton(onClick = { conflictAsk = null }) { Text(stringResource(R.string.cancel)) } },
+                ConflictDialog(
+                    body = stringResource(R.string.routine_conflict_day_body, day.fullName().replaceFirstChar { it.uppercase() }, owner.name),
+                    confirmLabel = stringResource(R.string.routine_conflict_turn_off, owner.name),
+                    onConfirm = { disabledOthers = disabledOthers + owner.id; applyDay(day); conflictAsk = null },
+                    onDismiss = { conflictAsk = null },
                 )
             }
         }
@@ -723,20 +721,29 @@ private fun parseEdit(raw: String): TaskEdit? {
 @Composable
 private fun RoutineConflictDialog(name: String, conflicts: List<DayConflict>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val line = stringResource(R.string.routine_conflict_line)
-    val lines = conflicts.joinToString("\n") { String.format(line, it.routine.name, it.days.shortList()) }
+    val lines = conflicts.joinToString("\n") { String.format(line, it.routine.name, it.days.fullList()) }
+    ConflictDialog(
+        body = stringResource(R.string.routine_conflict_body, name, lines),
+        confirmLabel = if (conflicts.size == 1) stringResource(R.string.routine_conflict_disable_one, conflicts[0].routine.name)
+        else stringResource(R.string.routine_conflict_disable_many),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
+}
+
+/** The way out is a real button (filled, full width), with Cancel under it. */
+@Composable
+private fun ConflictDialog(body: String, confirmLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.routine_conflict_title)) },
-        text = { Text(stringResource(R.string.routine_conflict_body, name, lines)) },
+        text = { Text(body) },
         confirmButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                TextButton(onClick = onConfirm) {
-                    Text(
-                        if (conflicts.size == 1) stringResource(R.string.routine_conflict_disable_one, conflicts[0].routine.name)
-                        else stringResource(R.string.routine_conflict_disable_many),
-                    )
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(confirmLabel, textAlign = TextAlign.Center)
                 }
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
