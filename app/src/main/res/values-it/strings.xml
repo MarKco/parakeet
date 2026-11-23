@@ -193,6 +193,9 @@
     <string name="routine_days_none">Nessun giorno: la usi per singole date</string>
     <string name="routine_days_moved">%1$s spostato da %2$s</string>
     <string name="routine_enabled">Attiva</string>
+    <string name="routine_card_wake">Sveglia</string>
+    <string name="routine_card_exit">Uscita</string>
+    <string name="routine_card_duplicate">Duplica</string>
     <string name="routine_duplicate">Duplica routine</string>
     <string name="routine_copy_name">%1$s (copia)</string>
     <string name="routine_tasks_empty">Nessuna attività: aggiungi quelle che fai in questa routine.</string>

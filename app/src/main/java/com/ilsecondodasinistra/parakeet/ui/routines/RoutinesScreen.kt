@@ -3,6 +3,8 @@ package com.ilsecondodasinistra.parakeet.ui.routines
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,6 +37,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -97,6 +101,19 @@ import java.time.LocalTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> Unit, onEdit: (Long) -> Unit) {
+    var deleteId by rememberSaveable { mutableStateOf<Long?>(null) }
+    state.routines.firstOrNull { it.id == deleteId }?.let { r ->
+        AlertDialog(
+            onDismissRequest = { deleteId = null },
+            text = { Text(stringResource(R.string.routine_delete_confirm, r.name)) },
+            confirmButton = {
+                TextButton(onClick = { deleteId = null; viewModel.deleteRoutine(r) }) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleteId = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -137,6 +154,7 @@ fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                         onClick = { onEdit(r.id) },
                         onToggle = { viewModel.setRoutineEnabled(r, it) },
                         onDuplicate = { viewModel.duplicateRoutine(r) { id -> onEdit(id) } },
+                        onDelete = { deleteId = r.id },
                     )
                 }
             }
@@ -144,8 +162,19 @@ fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
     }
 }
 
+/**
+ * A routine in the list. Long names get the whole width (two lines) with the switch beside them; the actions sit
+ * on their own row below, with labels, so nothing is squeezed.
+ */
 @Composable
-private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit, onToggle: (Boolean) -> Unit, onDuplicate: () -> Unit) {
+private fun RoutineCard(
+    routine: Routine,
+    totalMinutes: Int,
+    onClick: () -> Unit,
+    onToggle: (Boolean) -> Unit,
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val wake = routine.exitTime.minusMinutes(totalMinutes.toLong())
     Surface(
         onClick = onClick,
@@ -153,22 +182,47 @@ private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.heightIn(min = 104.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Colour spine
-            Box(Modifier.padding(start = 12.dp).width(6.dp).heightIn(min = 72.dp).fillMaxHeight().clip(CircleShape).background(routine.uiColor()))
-            Column(Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Text(routine.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    LcdText(wake.lcd(), 30.sp, color = MaterialTheme.colorScheme.onSurface)
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            // Colour spine, as tall as the card
+            Box(
+                Modifier.padding(start = 12.dp, top = 16.dp, bottom = 16.dp).width(6.dp).fillMaxHeight()
+                    .clip(CircleShape).background(routine.uiColor()),
+            )
+            Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp, top = 14.dp, bottom = 4.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
                     Text(
-                        "  →  " + routine.exitTime.lcd(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp),
+                        routine.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(top = 4.dp, end = 12.dp),
+                    )
+                    Switch(
+                        checked = routine.enabled,
+                        onCheckedChange = onToggle,
+                        modifier = Modifier.padding(end = 8.dp).semantics { contentDescription = routine.name },
                     )
                 }
+                // What the two times are: the alarm, then the time you leave
+                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 4.dp)) {
+                    Column {
+                        Text(stringResource(R.string.routine_card_wake), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LcdText(wake.lcd(), 30.sp, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Text(
+                        "→",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 6.dp),
+                    )
+                    Column {
+                        Text(stringResource(R.string.routine_card_exit), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LcdText(routine.exitTime.lcd(), 30.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 // Week at a glance: the letters of its days in its colour
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
                     DayOfWeek.entries.forEach { d ->
                         val on = d in routine.days
                         Text(
@@ -179,15 +233,23 @@ private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit
                         )
                     }
                 }
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDuplicate, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.routine_card_duplicate))
+                    }
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.delete))
+                    }
+                }
             }
-            IconButton(onClick = onDuplicate) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.routine_duplicate), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Switch(
-                checked = routine.enabled,
-                onCheckedChange = onToggle,
-                modifier = Modifier.padding(end = 16.dp).semantics { contentDescription = routine.name },
-            )
         }
     }
 }
