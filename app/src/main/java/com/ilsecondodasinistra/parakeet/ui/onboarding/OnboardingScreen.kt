@@ -59,6 +59,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -82,8 +83,18 @@ import com.ilsecondodasinistra.parakeet.ui.AnimatedParakeetIcon
 import com.ilsecondodasinistra.parakeet.ui.LcdText
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import com.ilsecondodasinistra.parakeet.ui.ChoiceCard
 import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
+import com.ilsecondodasinistra.parakeet.ui.main.NewTask
+import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
+import com.ilsecondodasinistra.parakeet.ui.dayLabel
+import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
+import com.ilsecondodasinistra.parakeet.ui.main.shortList
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -95,16 +106,21 @@ import java.time.LocalTime
 @Composable
 fun OnboardingScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
-    val names = stringArrayResource(R.array.suggestion_names)
-    val defaultMinutes = integerArrayResource(R.array.suggestion_minutes)
+    // The suggestions, then the cushion: "time for the unexpected", the last of the list, ticked from the start
+    val names = stringArrayResource(R.array.suggestion_names).toList() + stringResource(R.string.buffer_task_name)
+    val defaultMinutes = integerArrayResource(R.array.suggestion_minutes).toList() + DEFAULT_BUFFER_MINUTES
+    val bufferIndex = names.lastIndex
 
     var step by rememberSaveable { mutableIntStateOf(0) }
     var welcomeBounce by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { delay(600); welcomeBounce++ }
     val timeState = rememberTimePickerState(8, 0, true)
-    var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList())) }   // pre-selected suggestions
-    var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes.toList())) }
+    var selected by rememberSaveable { mutableStateOf(ArrayList((0..2).toList() + bufferIndex)) }   // pre-selected suggestions
+    var minutes by rememberSaveable { mutableStateOf(ArrayList(defaultMinutes)) }
+    var scheduled by rememberSaveable { mutableStateOf(false) }          // simple mode by default
+    var days by rememberSaveable { mutableStateOf(ArrayList<Int>()) }   // empty = only the next morning
     var notify by rememberSaveable { mutableStateOf(true) }
+    var internalAlarm by rememberSaveable { mutableStateOf(true) }
     var notifyGranted by rememberSaveable { mutableStateOf(hasNotificationPermission(context)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -113,14 +129,26 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     }
 
     val exitTime = LocalTime.of(timeState.hour, timeState.minute)
-    val chosen = selected.sorted().map { names[it] to minutes[it] }
+    val chosen = selected.sorted().map { NewTask(names[it], minutes[it], buffer = it == bufferIndex) }
     val preview = WakeUpCalculator.plan(
         exitTime,
-        chosen.map { Task(name = it.first, minutes = it.second, checked = true) },
+        chosen.map { Task(name = it.name, minutes = it.minutes, checked = true, buffer = it.buffer) },
         LocalDateTime.now(),
     )
 
-    fun finish() = viewModel.completeOnboarding(exitTime, chosen, notify && notifyGranted)
+    // The "When?" step exists only in scheduled mode
+    val steps = remember(scheduled) { Step.entries.filter { it != Step.WHEN || scheduled } }
+    val daySet = days.map { DayOfWeek.of(it) }.toSet()
+    val usedDays = if (scheduled) daySet else emptySet()
+    val weekdaysName = stringResource(R.string.routine_name_weekdays)
+    val weekendName = stringResource(R.string.routine_name_weekend)
+    val defaultName = stringResource(R.string.routine_default_name)
+    fun finish() = viewModel.completeOnboarding(
+        exitTime, chosen, scheduled, usedDays,
+        AlarmPlanner.suggestedName(usedDays, weekdaysName, weekendName, defaultName),
+        notify && notifyGranted,
+        internalAlarm && notifyGranted, // the in-app alarm needs notifications to appear when it rings
+    )
 
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
     Column(
@@ -133,8 +161,8 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = if (current == 0) Arrangement.Center else Arrangement.Top,
             ) {
-                when (current) {
-                    0 -> {
+                when (steps[current]) {
+                    Step.WELCOME -> {
                         AnimatedParakeetIcon(trigger = welcomeBounce, modifier = Modifier.size(140.dp))
                         Spacer(Modifier.size(24.dp))
                         Text(
@@ -146,11 +174,30 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         Spacer(Modifier.size(12.dp))
                         Text(stringResource(R.string.onb_welcome_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                     }
-                    1 -> {
+                    Step.MODE -> {
+                        Title(R.string.onb_mode_title)
+                        Text(stringResource(R.string.onb_mode_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ChoiceCard(
+                                selected = !scheduled,
+                                title = stringResource(R.string.plan_simple),
+                                description = stringResource(R.string.plan_simple_desc),
+                                onClick = { scheduled = false },
+                            )
+                            ChoiceCard(
+                                selected = scheduled,
+                                title = stringResource(R.string.plan_scheduled),
+                                description = stringResource(R.string.plan_scheduled_desc),
+                                onClick = { scheduled = true },
+                            )
+                        }
+                    }
+                    Step.EXIT -> {
                         Title(R.string.onb_exit_title)
                         TimePicker(state = timeState)
                     }
-                    2 -> {
+                    Step.TASKS -> {
                         Title(R.string.onb_tasks_title)
                         Text(stringResource(R.string.onb_tasks_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.size(8.dp))
@@ -170,9 +217,64 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                         }
                         }
                     }
-                    else -> {
+                    Step.WHEN -> {
+                        Title(R.string.onb_when_title)
+                        Text(stringResource(R.string.onb_when_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        val once = stringResource(R.string.onb_when_once, dayLabel(preview.wakeAt, LocalDate.now()))
+                        val workdays = DayOfWeek.entries.take(5).map { it.value }
+                        val weekend = listOf(DayOfWeek.SATURDAY.value, DayOfWeek.SUNDAY.value)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                            FilterChip(selected = days.isEmpty(), onClick = { days = ArrayList() }, label = { Text(once) }, modifier = Modifier.heightIn(min = 40.dp))
+                            FilterChip(selected = days.toSet() == workdays.toSet(), onClick = { days = ArrayList(workdays) }, label = { Text(weekdaysName) }, modifier = Modifier.heightIn(min = 40.dp))
+                            FilterChip(selected = days.toSet() == weekend.toSet(), onClick = { days = ArrayList(weekend) }, label = { Text(weekendName) }, modifier = Modifier.heightIn(min = 40.dp))
+                        }
+                        Spacer(Modifier.size(20.dp))
+                        WeekdayChips(
+                            selected = daySet,
+                            color = ParakeetLime,
+                            onToggle = { d -> days = ArrayList(if (d.value in days) days - d.value else days + d.value) },
+                        )
+                        Spacer(Modifier.size(20.dp))
+                        Text(
+                            if (days.isEmpty()) once else stringResource(R.string.onb_when_weekly, daySet.shortList()),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    Step.ALARM -> {
+                        Title(R.string.onb_alarm_title)
+                        Text(stringResource(R.string.onb_alarm_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(20.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ChoiceCard(
+                                selected = internalAlarm,
+                                title = stringResource(R.string.mode_internal),
+                                description = stringResource(R.string.mode_internal_desc),
+                                onClick = { internalAlarm = true },
+                            )
+                            ChoiceCard(
+                                selected = !internalAlarm,
+                                title = stringResource(R.string.mode_clock),
+                                description = stringResource(R.string.mode_clock_desc),
+                                onClick = { internalAlarm = false },
+                            )
+                        }
+                    }
+                    Step.NOTIFY -> {
                         Title(R.string.onb_notify_title)
                         Text(stringResource(R.string.onb_notify_body), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        if (internalAlarm && !notifyGranted) {
+                            Spacer(Modifier.size(12.dp))
+                            Text(
+                                stringResource(R.string.onb_notify_alarm_needed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                         Spacer(Modifier.size(24.dp))
                         if (notifyGranted) {
                             Text(stringResource(R.string.onb_notify_ready), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -187,7 +289,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             }
         }
 
-        if (step == 2) {
+        if (steps[step] == Step.TASKS) {
             // Live preview stays visible while the list scrolls
             Column(
                 Modifier.fillMaxWidth().padding(top = 8.dp).clip(MaterialTheme.shapes.extraLarge).background(ParakeetDarker).padding(vertical = 12.dp),
@@ -199,7 +301,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             Spacer(Modifier.size(12.dp))
         }
         if (step > 0) {
-            StepDots(step - 1, 3)
+            StepDots(step - 1, steps.size - 1)
             Spacer(Modifier.size(12.dp))
         }
         // Navigation row
@@ -211,7 +313,7 @@ fun OnboardingScreen(viewModel: MainViewModel) {
                 else -> {
                     TextButton(onClick = { step -= 1 }) { Text(stringResource(R.string.onb_back)) }
                     Spacer(Modifier.weight(1f))
-                    if (step == 3) {
+                    if (step == steps.lastIndex) {
                         if (!notifyGranted) {
                             TextButton(onClick = { notify = false; finish() }) { Text(stringResource(R.string.onb_no_thanks)) }
                         }
@@ -225,6 +327,9 @@ fun OnboardingScreen(viewModel: MainViewModel) {
     }
     }
 }
+
+/** Onboarding pages in order; WHEN (weekdays) only exists in scheduled mode. */
+private enum class Step { WELCOME, MODE, EXIT, TASKS, WHEN, ALARM, NOTIFY }
 
 @Composable
 private fun Title(res: Int) {
@@ -302,3 +407,5 @@ private fun StepDots(step: Int, count: Int) {
 private fun hasNotificationPermission(context: android.content.Context): Boolean =
     Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+private const val DEFAULT_BUFFER_MINUTES = 5

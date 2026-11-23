@@ -1,7 +1,7 @@
-Parakeet 4.0: all new!
-• New look: clearer, easier to tap, with tablet support and dark theme
-• See at a glance when to wake up and how long you need
-• Tap an activity to include it, swipe to delete it (with Undo)
-• The alarm is created quietly in your Clock app, without duplicates
-• Guided first run and small animations
-• Your activities and exit time are kept
+Parakeet 5.3: the alarm rings by itself and it syncs!
+• Built-in alarm: sound, rising volume, vibration, snooze, even on the lock screen
+• Stop it by sliding, solving a sum, shaking or scanning a QR code
+• Scheduled mode: weekday routines, the alarm re-arms by itself
+• New: sync across phones through a folder of your choice, plus file backup
+• You can always use the Clock app
+• Your activities are kept

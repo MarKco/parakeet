@@ -6,22 +6,31 @@
 
 ## Italiano
 
-*Ultimo aggiornamento: 13 novembre 2026*
+*Ultimo aggiornamento: 23 novembre 2026*
 
 Parakeet (`com.ilsecondodasinistra.parakeet`) è un'app Android che calcola l'ora della sveglia a partire dall'orario di uscita da casa e dalle attività mattutine scelte dall'utente. Questa informativa spiega quali dati usa l'app e come vengono trattati.
 
 ### In breve
 
-**Parakeet non raccoglie, non trasmette e non condivide alcun dato personale.** Non richiede un account, non contiene pubblicità, non usa strumenti di analisi o di segnalazione degli errori e non dichiara il permesso di accesso a Internet: l'app non può inviare dati fuori dal dispositivo.
+**Parakeet non raccoglie, non trasmette e non condivide alcun dato personale.** Non richiede un account, non contiene pubblicità, non usa strumenti di analisi o di segnalazione degli errori e non dichiara il permesso di accesso a Internet: l'app non può inviare dati in rete.
 
 ### Dati che l'app memorizza sul dispositivo
 
 - l'elenco delle attività mattutine (nome e durata in minuti) e se sono selezionate;
 - l'orario abituale di uscita da casa;
 - le impostazioni (notifica all'uscita attiva o no, testo personalizzato della notifica);
-- le informazioni sull'ultima sveglia impostata (orario della sveglia e dell'uscita), per mostrarne lo stato e per riprogrammare la notifica dopo un riavvio.
+- le informazioni sull'ultima sveglia impostata (orario della sveglia e dell'uscita), per mostrarne lo stato e per riprogrammare sveglia e notifica dopo un riavvio.
+- le routine e i piani per i giorni della settimana (nome, colore, orario di uscita, giorni, attività);
+- le opzioni della sveglia (suoneria, vibrazione, posticipo, modo di spegnimento e, se lo scegli, il testo del QR code che hai inquadrato);
+- le scelte per i promemoria e per "Dopo la sveglia".
 
-Questi dati restano esclusivamente nella memoria privata dell'app sul dispositivo. Vengono eliminati disinstallando l'app o cancellandone i dati dalle impostazioni di sistema. Chi aggiorna dalle versioni precedenti di Parakeet ritrova le proprie attività: i dati vengono letti una sola volta dal vecchio archivio dell'app e spostati in quello nuovo, sempre sul dispositivo.
+Questi dati restano nella memoria privata dell'app sul dispositivo (e, solo se attivi la sincronizzazione o il backup, nei file che scegli tu, come spiegato sotto). Vengono eliminati disinstallando l'app o cancellandone i dati dalle impostazioni di sistema. Chi aggiorna dalle versioni precedenti di Parakeet ritrova le proprie attività: i dati vengono letti una sola volta dal vecchio archivio dell'app e spostati in quello nuovo, sempre sul dispositivo.
+
+### Sincronizzazione e backup (facoltativi)
+
+Se lo attivi nelle Impostazioni, Parakeet scrive attività, routine, piani e impostazioni condivise in un file nella **cartella che scegli tu** (tramite il selettore di cartelle di Android), e legge i file degli altri tuoi dispositivi nella stessa cartella per tenerli allineati. Il file contiene un identificativo casuale e il nome del dispositivo. L'app non si connette a Internet e non invia nulla a server dell'autore o di terzi. Se la cartella è sincronizzata da un'altra app o servizio (ad esempio Syncthing o un cloud), il trasferimento è fatto da quell'app e valgono le sue regole. Puoi disattivare la sincronizzazione o scegliere un'altra cartella in qualsiasi momento; i file già nella cartella restano e vanno cancellati da te.
+
+Dalle Impostazioni puoi anche salvare un file di backup (stessi dati) nel punto che scegli e ripristinarlo in seguito.
 
 ### Permessi richiesti
 
@@ -29,8 +38,13 @@ Questi dati restano esclusivamente nella memoria privata dell'app sul dispositiv
 |---|---|
 | Impostare sveglie (`SET_ALARM`) | Creare la sveglia nell'app Orologio del dispositivo. |
 | Notifiche (`POST_NOTIFICATIONS`) | Mostrare la notifica "Ora di uscire!" all'orario di uscita. Facoltativo: si può rifiutare o disattivare nelle impostazioni. |
+| Aggiornamenti in tempo reale (`POST_PROMOTED_NOTIFICATIONS`, Android 16) | Mostrare nella barra di stato, durante la mattina, la notifica "Prima di uscire" con l'attività in corso. Facoltativo: si può disattivare dalle impostazioni di sistema. |
 | Sveglie e promemoria (`SCHEDULE_EXACT_ALARM`) | Far arrivare la notifica di uscita all'ora esatta. Facoltativo: senza, la notifica può arrivare con qualche minuto di ritardo. |
-| Avvio del dispositivo (`RECEIVE_BOOT_COMPLETED`) | Riprogrammare la notifica di uscita dopo un riavvio del telefono. |
+| Avvio del dispositivo (`RECEIVE_BOOT_COMPLETED`) | Riprogrammare la notifica di uscita e la sveglia dopo un riavvio del telefono. |
+| Sveglie esatte (`USE_EXACT_ALARM`) | Far suonare la sveglia di Parakeet all'ora esatta. Concesso automaticamente (Android 13+); su Android 12 si usa `SCHEDULE_EXACT_ALARM`, concesso dall'utente. |
+| Schermo intero (`USE_FULL_SCREEN_INTENT`) | Mostrare la schermata della sveglia anche a telefono bloccato. Facoltativo. |
+| Servizio in primo piano (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`), `WAKE_LOCK`, `VIBRATE` | Far suonare e vibrare la sveglia finché non viene spenta. |
+| Fotocamera (`CAMERA`) | Solo se scegli di spegnere la sveglia con un QR code: l'app legge il codice sul dispositivo. Nessuna immagine viene salvata o inviata. Facoltativo. |
 
 ### Servizi di terze parti e link esterni
 
@@ -38,7 +52,7 @@ L'app non integra servizi di terze parti. Nella schermata "Info" sono presenti d
 
 ### Backup di Android
 
-Il sistema Android può includere i dati dell'app nel backup del dispositivo (ad esempio su Google Drive), secondo le impostazioni scelte dall'utente. Questo è gestito dal sistema operativo e non dall'app.
+Il sistema Android può includere i dati dell'app nel backup del dispositivo (ad esempio su Google Drive), secondo le impostazioni scelte dall'utente. Questo è gestito dal sistema operativo e non dall'app. Le scelte di sincronizzazione (cartella e identificativo del dispositivo) sono escluse da questo backup.
 
 ### Minori
 
@@ -56,22 +70,31 @@ Marco Zanetti – [ilsecondodasinistra@gmail.com](mailto:ilsecondodasinistra@gma
 
 ## English
 
-*Last updated: 13 November 2026*
+*Last updated: 23 November 2026*
 
 Parakeet (`com.ilsecondodasinistra.parakeet`) is an Android app that works out your wake-up time from the time you leave home and the morning activities you choose. This policy explains which data the app uses and how it is handled.
 
 ### In short
 
-**Parakeet does not collect, transmit or share any personal data.** It needs no account, contains no advertising, uses no analytics or crash-reporting tools and does not declare the Internet permission: the app cannot send data off your device.
+**Parakeet does not collect, transmit or share any personal data.** It needs no account, contains no advertising, uses no analytics or crash-reporting tools and does not declare the Internet permission: the app cannot send data over the network.
 
 ### Data stored on your device
 
 - your list of morning activities (name and duration in minutes) and whether they are selected;
 - your usual exit time;
 - settings (exit notification on or off, custom notification text);
-- details of the last alarm you set (alarm and exit times), to show its status and to reschedule the notification after a restart.
+- details of the last alarm you set (alarm and exit times), to show its status and to reschedule the alarm and the notification after a restart.
+- your routines and weekday plans (name, colour, exit time, days, activities);
+- your alarm options (sound, vibration, snooze, how to stop it and, if you choose it, the text of the QR code you scanned);
+- your choices for reminders and "After the alarm".
 
-This data stays exclusively in the app's private storage on your device. It is deleted when you uninstall the app or clear its data in the system settings. If you update from a previous version of Parakeet your activities are carried over: the data is read once from the old app storage and moved to the new one, always on your device.
+This data stays in the app's private storage on your device (and, only if you turn on sync or backup, in the files you choose, as explained below). It is deleted when you uninstall the app or clear its data in the system settings. If you update from a previous version of Parakeet your activities are carried over: the data is read once from the old app storage and moved to the new one, always on your device.
+
+### Sync and backup (optional)
+
+If you turn it on in Settings, Parakeet writes your activities, routines, plans and shared settings to a file in the **folder you choose** (through Android's folder picker), and reads the files of your other devices in the same folder to keep them aligned. The file holds a random identifier and the device name. The app does not connect to the Internet and sends nothing to the author's or any third party's servers. If the folder is synchronised by another app or service (for example Syncthing or a cloud), that app does the transfer and its own rules apply. You can turn sync off or pick another folder at any time; files already in the folder stay there and are yours to delete.
+
+From Settings you can also save a backup file (same data) wherever you choose and restore it later.
 
 ### Permissions
 
@@ -79,8 +102,13 @@ This data stays exclusively in the app's private storage on your device. It is d
 |---|---|
 | Set alarms (`SET_ALARM`) | Create the alarm in your device's Clock app. |
 | Notifications (`POST_NOTIFICATIONS`) | Show the "Time to leave!" notification at your exit time. Optional: you can decline or turn it off in settings. |
+| Live updates (`POST_PROMOTED_NOTIFICATIONS`, Android 16) | Show the "Before you leave" notification, with your current activity, in the status bar during the morning. Optional: you can turn it off in system settings. |
 | Alarms & reminders (`SCHEDULE_EXACT_ALARM`) | Deliver the exit notification at the exact time. Optional: without it the notification may arrive a few minutes late. |
-| Run at startup (`RECEIVE_BOOT_COMPLETED`) | Reschedule the exit notification after the phone restarts. |
+| Run at startup (`RECEIVE_BOOT_COMPLETED`) | Reschedule the exit notification and the alarm after the phone restarts. |
+| Exact alarms (`USE_EXACT_ALARM`) | Ring the Parakeet alarm at the exact time. Granted automatically (Android 13+); on Android 12 `SCHEDULE_EXACT_ALARM` is used, granted by the user. |
+| Full screen (`USE_FULL_SCREEN_INTENT`) | Show the alarm screen even when the phone is locked. Optional. |
+| Foreground service (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`), `WAKE_LOCK`, `VIBRATE` | Ring and vibrate until the alarm is switched off. |
+| Camera (`CAMERA`) | Only if you choose to stop the alarm with a QR code: the code is read on the device. No image is stored or sent. Optional. |
 
 ### Third parties and external links
 
@@ -88,7 +116,7 @@ The app integrates no third-party services. The "About" screen has two links (th
 
 ### Android backup
 
-Android may include the app's data in your device backup (for example on Google Drive), according to the settings you chose. This is handled by the operating system, not by the app.
+Android may include the app's data in your device backup (for example on Google Drive), according to the settings you chose. This is handled by the operating system, not by the app. Your sync choices (folder and device identifier) are excluded from that backup.
 
 ### Children
 

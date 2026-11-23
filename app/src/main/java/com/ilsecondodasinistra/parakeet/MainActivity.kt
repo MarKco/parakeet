@@ -1,6 +1,13 @@
 package com.ilsecondodasinistra.parakeet
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.ilsecondodasinistra.parakeet.alarm.AlarmState
+import com.ilsecondodasinistra.parakeet.ui.alarm.AlarmActivity
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +39,8 @@ import com.ilsecondodasinistra.parakeet.ui.about.AboutScreen
 import com.ilsecondodasinistra.parakeet.ui.main.MainScreen
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import com.ilsecondodasinistra.parakeet.ui.onboarding.OnboardingScreen
+import com.ilsecondodasinistra.parakeet.ui.routines.RoutineEditorScreen
+import com.ilsecondodasinistra.parakeet.ui.routines.RoutinesScreen
 import com.ilsecondodasinistra.parakeet.ui.settings.SettingsScreen
 import com.ilsecondodasinistra.parakeet.ui.theme.ParakeetTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,6 +48,8 @@ import kotlinx.serialization.Serializable
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @javax.inject.Inject lateinit var syncManager: com.ilsecondodasinistra.parakeet.sync.SyncManager
+
     /** Keeps the splash screen until the first state (after the one-time data migration) is ready. */
     private var ready = false
 
@@ -46,6 +57,18 @@ class MainActivity : ComponentActivity() {
         installSplashScreen().setKeepOnScreenCondition { !ready }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Opening Parakeet while the alarm rings leads straight to the screen that stops it
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                AlarmState.ringing.collect { ring ->
+                    if (ring != null) {
+                        startActivity(Intent(this@MainActivity, AlarmActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }
+            }
+        }
+        // With the app in front: sync once on opening, then every 15 minutes
+        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { syncManager.foreground() } }
         setContent {
             ParakeetTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
@@ -59,6 +82,9 @@ class MainActivity : ComponentActivity() {
 @Serializable private data object MainKey : NavKey
 @Serializable private data object SettingsKey : NavKey
 @Serializable private data object AboutKey : NavKey
+@Serializable private data object RoutinesKey : NavKey
+/** [forDay]: epoch day the new routine is created for, or -1. */
+@Serializable private data class RoutineEditorKey(val id: Long, val forDay: Long) : NavKey
 
 private const val NAV_MILLIS = 320
 
@@ -100,6 +126,20 @@ private fun ParakeetRoot(onReady: () -> Unit, viewModel: MainViewModel = hiltVie
                         viewModel = viewModel,
                         onOpenSettings = { backStack.add(SettingsKey) },
                         onOpenAbout = { backStack.add(AboutKey) },
+                        onOpenRoutines = { backStack.add(RoutinesKey) },
+                        onEditRoutine = { id, date -> backStack.add(RoutineEditorKey(id, date?.toEpochDay() ?: -1L)) },
+                    )
+                }
+                entry<RoutinesKey> {
+                    RoutinesScreen(state, viewModel, onBack = onBack, onEdit = { backStack.add(RoutineEditorKey(it, -1L)) })
+                }
+                entry<RoutineEditorKey> { key ->
+                    RoutineEditorScreen(
+                        routineId = key.id,
+                        forDate = key.forDay.takeIf { it >= 0 }?.let(java.time.LocalDate::ofEpochDay),
+                        state = state,
+                        viewModel = viewModel,
+                        onBack = onBack,
                     )
                 }
                 entry<SettingsKey> { SettingsScreen(state, viewModel, onBack = onBack) }

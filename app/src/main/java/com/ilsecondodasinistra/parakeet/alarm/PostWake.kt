@@ -1,0 +1,359 @@
+package com.ilsecondodasinistra.parakeet.alarm
+
+import android.app.AlarmManager
+import android.app.Notification
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
+import androidx.annotation.RequiresApi
+import androidx.core.graphics.createBitmap
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.ilsecondodasinistra.parakeet.MainActivity
+import com.ilsecondodasinistra.parakeet.R
+import com.ilsecondodasinistra.parakeet.data.AlarmMode
+import com.ilsecondodasinistra.parakeet.data.PostWakeSession
+import com.ilsecondodasinistra.parakeet.data.SettingsRepository
+import com.ilsecondodasinistra.parakeet.data.TaskRepository
+import com.ilsecondodasinistra.parakeet.domain.PostWakeAction
+import com.ilsecondodasinistra.parakeet.domain.PostWakeEvent
+import com.ilsecondodasinistra.parakeet.domain.PostWakeTimeline
+import com.ilsecondodasinistra.parakeet.domain.RoutineColors
+import com.ilsecondodasinistra.parakeet.domain.StepStatus
+import com.ilsecondodasinistra.parakeet.domain.Task
+import com.ilsecondodasinistra.parakeet.domain.TimelineState
+import com.ilsecondodasinistra.parakeet.ui.postwake.PostWakeActivity
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * "After the alarm": from Stop to the exit, the day's activities laid end to end ([PostWakeTimeline]).
+ * Owns the persisted [PostWakeSession], the ongoing "next thing to do" notification and the AlarmManager
+ * wake-ups at the moments the timeline moves on by itself. The ring + list screen reads the same session.
+ */
+@Singleton
+class PostWake @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val settings: SettingsRepository,
+    private val tasks: TaskRepository,
+    private val alarmSync: AlarmSync,
+) {
+    private val alarmManager = context.getSystemService(AlarmManager::class.java)
+    private val mutex = Mutex()
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Fire-and-forget [begin], for callers that are about to be destroyed (the stopping alarm service). */
+    fun beginAsync() {
+        appScope.launch { begin() }
+    }
+
+    /**
+     * Starts the morning for the occurrence that just rang. Called when the alarm is stopped by the user
+     * (not on snooze, not on auto-stop). Returns false when there is nothing to guide: feature off, Clock
+     * mode, fewer than two activities, or the exit already passed.
+     */
+    suspend fun begin(): Boolean = mutex.withLock {
+        settings.clearPostWakeSession() // whatever the outcome below, an older morning must not linger
+        val s = settings.current()
+        if (!s.postWake.enabled || s.alarmMode != AlarmMode.INTERNAL) return false
+        val day = s.plan.lastRungDay ?: return false
+        val schedule = alarmSync.dayFor(LocalDate.ofEpochDay(day))
+        val wake = schedule.wakeAt ?: return false
+        val exit = schedule.exitAt ?: return false
+        val steps = tasks.tasks.first().filter { it.id in schedule.taskIds }
+        // Two activities at least (the cushion of the plan is not one); the cushion stays in the session for the ring
+        if (steps.count { !it.buffer } < 2 || exit.toMillis() <= System.currentTimeMillis()) return false
+        start(
+            PostWakeSession(
+                day, wake.toMillis(), exit.toMillis(), steps.map { it.id }, PostWakeTimeline.MINUTE_MILLIS, emptyList(),
+                startedAtMillis = System.currentTimeMillis(), // the plan starts at Stop: a snooze eats the cushion
+            ),
+        )
+        true
+    }
+
+    /** A rehearsal: the next day's activities (or the checked ones) at 1 minute = 5 seconds, starting now. */
+    suspend fun startDemo(): Boolean = mutex.withLock {
+        val catalog = tasks.tasks.first()
+        val planned = alarmSync.next()?.taskIds.orEmpty()
+        var steps = catalog.filter { it.id in planned }
+        if (steps.count { !it.buffer } < 2) steps = catalog.filter { it.checked }
+        if (steps.count { !it.buffer } < 2) steps = catalog
+        // A handful of activities, and the cushion of the plan if there is one
+        steps = steps.filter { !it.buffer }.take(DEMO_MAX_STEPS) + steps.filter { it.buffer }
+        if (steps.count { !it.buffer } < 2) return false
+        val now = System.currentTimeMillis()
+        val exit = now + steps.sumOf { it.minutes } * DEMO_MS_PER_MINUTE
+        start(PostWakeSession(LocalDate.now().toEpochDay(), now, exit, steps.map { it.id }, DEMO_MS_PER_MINUTE, emptyList()))
+        true
+    }
+
+    private suspend fun start(session: PostWakeSession) {
+        settings.startPostWakeSession(session)
+        refreshLocked()
+    }
+
+    /** "Done" / "Do it later" / "Skip for today" on [taskId]. Ignored unless that task is the current one (a stale notification tap). */
+    suspend fun act(taskId: Long, action: PostWakeAction) = mutex.withLock {
+        val session = settings.current().postWakeSession ?: return@withLock
+        val now = System.currentTimeMillis()
+        val state = timeline(session, tasks.tasks.first(), now)
+        if (state.current?.task?.id != taskId) return@withLock
+        if (action == PostWakeAction.DEFER && !state.canDefer) return@withLock // nobody else to do first
+        settings.appendPostWakeEvent(PostWakeEvent(taskId, action, now))
+        refreshLocked()
+    }
+
+    /** Re-reads the session and brings notification and wake-ups in line (boundary reached, boot, time change). */
+    suspend fun refresh() = mutex.withLock { refreshLocked() }
+
+    /** Ends the session now (feature switched off). */
+    suspend fun clear() = mutex.withLock {
+        settings.clearPostWakeSession()
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        NotificationManagerCompat.from(context).cancel(ALERT_ID)
+        alarmManager.cancel(tickIntent())
+    }
+
+    private suspend fun refreshLocked() {
+        val s = settings.current()
+        val session = s.postWakeSession
+        val state = session?.let { timeline(it, tasks.tasks.first(), System.currentTimeMillis()) }
+        val next = state?.nextBoundaryMillis
+        if (session == null || state == null || next == null || !s.postWake.enabled) {
+            // Exit passed (the "time to leave" notification takes over) or feature off
+            val manager = NotificationManagerCompat.from(context)
+            manager.cancel(NOTIFICATION_ID); manager.cancel(ALERT_ID)
+            alarmManager.cancel(tickIntent())
+            return
+        }
+        val showing = s.postWake.notify && Notifications.canPost(context)
+        if (showing) post(state, s.postWake.ring)
+        else NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+        // The one alert of the morning: the margin is gone and the plan no longer fits before the exit
+        if (showing && state.overflowMillis > 0 && !session.lateAlerted) {
+            postLateAlert(state, s.postWake.ring)
+            settings.markPostWakeLateAlerted()
+        }
+        // The progress bar does not tick by itself: wake up once a minute while the notification is on screen
+        val wakeAt = if (showing) minOf(next, System.currentTimeMillis() + state.msPerMinute) else next
+        val pi = tickIntent()
+        if (alarmManager.canScheduleExact()) alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeAt, pi)
+        else alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeAt, pi)
+    }
+
+    private fun openIntent(ring: Boolean): PendingIntent = PendingIntent.getActivity(
+        context, RC_OPEN,
+        Intent(context, if (ring) PostWakeActivity::class.java else MainActivity::class.java),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    private fun post(state: TimelineState, ring: Boolean) {
+        val current = state.current
+        val exitTime = Instant.ofEpochMilli(state.exitAtMillis).atZone(ZoneId.systemDefault()).format(TIME)
+        val spanSeconds = ((state.exitAtMillis - state.wakeAtMillis) / 1000).toInt().coerceAtLeast(1)
+        val elapsedSeconds = ((state.nowMillis - state.wakeAtMillis) / 1000).toInt().coerceIn(0, spanSeconds)
+        val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_POST_WAKE)
+            .setSmallIcon(R.drawable.ic_stat_parakeet)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setContentIntent(openIntent(ring))
+            // The whole morning, wake-up to exit, filled by the clock (the plain bar of older Android versions)
+            .setProgress(spanSeconds, elapsedSeconds, false)
+        if (current != null) {
+            // The system draws the live clock: down to the end of the planned time, up once the activity runs over
+            val next = state.steps.drop(state.currentIndex + 1).firstOrNull { it.status == StepStatus.UPCOMING }
+            val text = when {
+                current.overrun -> context.getString(R.string.notif_postwake_late, exitTime)
+                next != null -> context.getString(R.string.notif_postwake_text_next, next.task.name, exitTime)
+                else -> context.getString(R.string.notif_postwake_text, exitTime)
+            }
+            // The accent (small icon, buttons) is the colour of this activity's arc: the same colour on the bar
+            builder.setColor(RoutineColors[current.colorIndex % RoutineColors.size])
+                .setContentTitle(boldTitle(context.getString(R.string.notif_postwake_title_now, current.task.name)))
+                .setContentText(text)
+                .setShowWhen(true).setWhen(current.plannedEndMillis).setUsesChronometer(true).setChronometerCountDown(!current.overrun)
+                .addAction(0, context.getString(R.string.postwake_done), action(ACTION_DONE, RC_DONE, current.task.id))
+            if (state.canDefer) {
+                builder.addAction(0, context.getString(R.string.postwake_later), action(ACTION_LATER, RC_LATER, current.task.id))
+            }
+            builder.addAction(0, context.getString(R.string.postwake_skip), action(ACTION_SKIP, RC_SKIP, current.task.id))
+        } else {
+            builder.setContentTitle(context.getString(R.string.notif_postwake_all_done))
+                .setContentText(context.getString(R.string.notif_postwake_margin, state.marginMinutes, exitTime))
+                .setShowWhen(true).setWhen(state.exitAtMillis).setUsesChronometer(true).setChronometerCountDown(true)
+        }
+        var notification = builder.build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            // Android 16: the bar becomes the ring (one coloured segment per activity, the margin in grey)
+            progressStyle(state)?.let { style ->
+                val recovered = Notification.Builder.recoverBuilder(context, notification).setStyle(style)
+                // From 16 QPR2 (API 36.1) it can also ask to be a Live Update: a chip in the status bar and a place
+                // on the lock screen
+                if (Build.VERSION.SDK_INT_FULL >= Build.VERSION_CODES_FULL.BAKLAVA_1) recovered.setRequestPromotedOngoing(true)
+                notification = recovered.build()
+            }
+        }
+        @Suppress("MissingPermission") // checked by Notifications.canPost
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+    }
+
+    /** Bold: the system keeps this style in the title (a larger size it drops, and a Live Update has no custom layout). */
+    private fun boldTitle(text: String): CharSequence = SpannableString(text).apply {
+        setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+
+    /** A round marker in the colour of the current activity, with a white edge, to sit on the bar where "now" is. */
+    private fun trackerIcon(argb: Int): Icon {
+        val size = 96
+        val bitmap = createBitmap(size, size)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = Color.WHITE
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+        paint.color = argb
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 12f, paint)
+        return Icon.createWithBitmap(bitmap)
+    }
+
+    /** The ring as a segmented bar: the same arcs, the margin at the end, and the clock as progress. */
+    @RequiresApi(Build.VERSION_CODES.BAKLAVA)
+    private fun progressStyle(state: TimelineState): Notification.ProgressStyle? {
+        fun clamp(t: Long) = t.coerceIn(state.wakeAtMillis, state.exitAtMillis)
+        val style = Notification.ProgressStyle().setStyledByProgress(true)
+        var total = 0
+        // The minutes of a snooze: already gone, in a neutral colour, before the first activity
+        val gone = ((clamp(state.startAtMillis) - state.wakeAtMillis) / 1000).toInt()
+        if (gone > 0) {
+            style.addProgressSegment(Notification.ProgressStyle.Segment(gone).setColor(GONE_ARGB))
+            total += gone
+        }
+        for (s in state.segments) {
+            val length = ((clamp(s.endMillis) - clamp(s.startMillis)) / 1000).toInt()
+            if (length <= 0) continue
+            style.addProgressSegment(Notification.ProgressStyle.Segment(length).setColor(RoutineColors[s.colorIndex % RoutineColors.size]))
+            total += length
+        }
+        val lastEnd = state.segments.lastOrNull()?.endMillis ?: state.wakeAtMillis
+        val margin = ((state.exitAtMillis - clamp(lastEnd)) / 1000).toInt()
+        if (margin > 0) {
+            style.addProgressSegment(Notification.ProgressStyle.Segment(margin).setColor(MARGIN_ARGB))
+            total += margin
+        }
+        if (total <= 0) return null
+        state.current?.let { style.setProgressTrackerIcon(trackerIcon(RoutineColors[it.colorIndex % RoutineColors.size])) }
+        return style.setProgress(((state.nowMillis - state.wakeAtMillis) / 1000).toInt().coerceIn(0, total))
+    }
+
+    /** Once per morning, when the margin is gone: a heads-up without sound, then it goes away by itself. */
+    private fun postLateAlert(state: TimelineState, ring: Boolean) {
+        val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_POST_WAKE_ALERT)
+            .setSmallIcon(R.drawable.ic_stat_parakeet)
+            .setContentTitle(context.getString(R.string.notif_postwake_alert_title))
+            .setContentText(context.getString(R.string.notif_postwake_alert_text, state.overflowMinutes))
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setTimeoutAfter(ALERT_TIMEOUT_MILLIS)
+            .setContentIntent(openIntent(ring))
+            .build()
+        @Suppress("MissingPermission") // checked by the caller
+        NotificationManagerCompat.from(context).notify(ALERT_ID, notification)
+    }
+
+    private fun action(action: String, requestCode: Int, taskId: Long): PendingIntent = PendingIntent.getBroadcast(
+        context, requestCode,
+        Intent(context, PostWakeReceiver::class.java).setAction(action).putExtra(EXTRA_TASK, taskId),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    private fun tickIntent(): PendingIntent = PendingIntent.getBroadcast(
+        context, RC_TICK, Intent(context, PostWakeReceiver::class.java).setAction(ACTION_TICK),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    private fun java.time.LocalDateTime.toMillis(): Long = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    companion object {
+        const val ACTION_TICK = "com.ilsecondodasinistra.parakeet.POSTWAKE_TICK"
+        const val ACTION_DONE = "com.ilsecondodasinistra.parakeet.POSTWAKE_DONE"
+        const val ACTION_LATER = "com.ilsecondodasinistra.parakeet.POSTWAKE_LATER"
+        const val ACTION_SKIP = "com.ilsecondodasinistra.parakeet.POSTWAKE_SKIP"
+        const val EXTRA_TASK = "task"
+        private const val NOTIFICATION_ID = 20
+        private const val RC_TICK = 20
+        private const val RC_DONE = 21
+        private const val RC_LATER = 22
+        private const val RC_OPEN = 23
+        private const val RC_SKIP = 24
+        private const val ALERT_ID = 21
+        private const val ALERT_TIMEOUT_MILLIS = 30_000L
+        private const val MARGIN_ARGB = 0xFF70756A.toInt()
+        private const val GONE_ARGB = 0xFFB4B9AC.toInt()
+        private const val DEMO_MS_PER_MINUTE = 5_000L
+        private const val DEMO_MAX_STEPS = 5
+        private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+
+        /** The session resolved against the catalog (edited names show up, deleted activities drop out). */
+        fun timeline(session: PostWakeSession, catalog: List<Task>, nowMillis: Long): TimelineState {
+            val byId = catalog.associateBy { it.id }
+            val planned = session.taskIds.mapNotNull(byId::get)
+            return PostWakeTimeline.compute(
+                session.wakeAtMillis, session.exitAtMillis, planned.filter { !it.buffer },
+                session.events, nowMillis, session.msPerMinute,
+                bufferMillis = planned.filter { it.buffer }.sumOf { it.minutes } * session.msPerMinute,
+                startAtMillis = session.startedAtMillis,
+            )
+        }
+    }
+}
+
+/** Notification buttons ("Done", "Do it later", "Skip for today") and the wake-up at each moment the timeline moves on. */
+@AndroidEntryPoint
+class PostWakeReceiver : BroadcastReceiver() {
+    @Inject lateinit var postWake: PostWake
+
+    override fun onReceive(context: Context, intent: Intent) {
+        val pending = goAsync()
+        val taskId = intent.getLongExtra(PostWake.EXTRA_TASK, -1L)
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                when (intent.action) {
+                    PostWake.ACTION_DONE -> postWake.act(taskId, PostWakeAction.DONE)
+                    PostWake.ACTION_LATER -> postWake.act(taskId, PostWakeAction.DEFER)
+                    PostWake.ACTION_SKIP -> postWake.act(taskId, PostWakeAction.SKIP)
+                    else -> postWake.refresh()
+                }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+}

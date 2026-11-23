@@ -1,7 +1,7 @@
-Parakeet 4.0: tutto nuovo!
-• Nuova grafica, più chiara e più comoda da toccare, anche per tablet e tema scuro
-• Vedi a colpo d'occhio a che ora svegliarti e quanto tempo ti serve
-• Tocca un'attività per includerla, scorri per eliminarla (con Annulla)
-• La sveglia viene creata in silenzio nell'app Orologio, senza doppioni
-• Primo avvio guidato e piccole animazioni
-• Le tue attività e l'orario di uscita vengono mantenuti
+Parakeet 5.3: la sveglia suona da sola e si sincronizza!
+• Sveglia integrata: suoneria, volume crescente, vibrazione, posticipo, anche a schermo bloccato
+• Spegnila scorrendo, con un calcolo, scuotendo o con un QR code
+• Modalità Programmata: routine per i giorni, la sveglia si riarma da sola
+• Nuovo: sincronizzazione tra telefoni con una cartella a tua scelta, più backup su file
+• Puoi sempre usare l'app Orologio
+• Le tue attività vengono mantenute

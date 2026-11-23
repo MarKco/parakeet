@@ -22,8 +22,8 @@ android {
         applicationId = "com.ilsecondodasinistra.parakeet"
         minSdk = 29
         targetSdk = 36
-        versionCode = 41
-        versionName = "4.0"
+        versionCode = 53
+        versionName = "5.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -39,6 +39,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Its own package, so a debug build installs next to the Play version (and has its own data and signature)
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
@@ -84,6 +89,12 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.haze.materials)
+
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)

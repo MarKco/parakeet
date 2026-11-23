@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ilsecondodasinistra.parakeet.MainActivity
 import com.ilsecondodasinistra.parakeet.R
+import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +26,11 @@ import javax.inject.Singleton
 
 object Notifications {
     const val CHANNEL_EXIT = "exit"
+    const val CHANNEL_ALARM = "alarm"
+    const val CHANNEL_UPCOMING = "upcoming"
+    const val CHANNEL_POST_WAKE = "postwake_live"
+    const val CHANNEL_POST_WAKE_ALERT = "postwake_alert"
+    private const val LEGACY_CHANNEL_POST_WAKE = "postwake"
 
     fun createChannels(context: Context) {
         val channel = NotificationChannel(
@@ -32,7 +38,43 @@ object Notifications {
             context.getString(R.string.channel_exit_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply { description = context.getString(R.string.channel_exit_description) }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val alarm = NotificationChannel(
+            CHANNEL_ALARM,
+            context.getString(R.string.channel_alarm_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.channel_alarm_description)
+            setSound(null, null) // the alarm sound is played by AlarmService on the alarm stream
+            enableVibration(false)
+            setBypassDnd(true)
+        }
+        val upcoming = NotificationChannel(
+            CHANNEL_UPCOMING,
+            context.getString(R.string.channel_upcoming_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply { description = context.getString(R.string.channel_upcoming_description) }
+        // Default importance but silent: it sits with the normal notifications, not in the "silent" ones below
+        val postWake = NotificationChannel(
+            CHANNEL_POST_WAKE,
+            context.getString(R.string.channel_postwake_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.channel_postwake_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
+        val postWakeAlert = NotificationChannel(
+            CHANNEL_POST_WAKE_ALERT,
+            context.getString(R.string.channel_postwake_alert_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.channel_postwake_alert_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_POST_WAKE) // the low-importance one of development builds
+        manager.createNotificationChannels(listOf(channel, alarm, upcoming, postWake, postWakeAlert))
     }
 
     fun canPost(context: Context): Boolean =
@@ -46,7 +88,7 @@ class ExitNotificationScheduler @Inject constructor(@ApplicationContext private 
 
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
 
-    fun canScheduleExact(): Boolean = alarmManager.canScheduleExactAlarms()
+    fun canScheduleExact(): Boolean = alarmManager.canScheduleExact()
 
     fun schedule(atMillis: Long) {
         if (atMillis <= System.currentTimeMillis()) return
@@ -113,20 +155,28 @@ class ExitAlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** Re-schedules the exit notification after reboot, clock/time-zone changes or when exact-alarm permission changes. */
+/** Re-arms everything after reboot, clock/time-zone changes or when exact-alarm permission changes. */
 @AndroidEntryPoint
 class RescheduleReceiver : BroadcastReceiver() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scheduler: ExitNotificationScheduler
+    @Inject lateinit var alarmSync: AlarmSync
+    @Inject lateinit var postWake: PostWake
 
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 val current = settings.current()
-                val alarm = current.activeAlarm
-                if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {
-                    scheduler.schedule(alarm.exitAtMillis)
+                if (current.alarmMode == AlarmMode.INTERNAL) {
+                    // Weekly plan: the next occurrence is recomputed from the data, never from a stored moment
+                    alarmSync.sync()
+                    postWake.refresh() // a morning in progress survives a reboot
+                } else {
+                    val alarm = current.activeAlarm
+                    if (current.notifyOnExit && alarm != null && alarm.exitAtMillis > System.currentTimeMillis()) {
+                        scheduler.schedule(alarm.exitAtMillis)
+                    }
                 }
             } finally {
                 pending.finish()
