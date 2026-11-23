@@ -585,7 +585,7 @@ fun RoutineEditorScreen(
             owners[day]?.let { owner ->
                 ConflictDialog(
                     body = stringResource(R.string.routine_conflict_day_body, day.fullName().replaceFirstChar { it.uppercase() }, owner.name),
-                    confirmLabel = stringResource(R.string.routine_conflict_turn_off, owner.name),
+                    confirmLabel = stringResource(R.string.routine_conflict_turn_off, day.fullName()),
                     onConfirm = { disabledOthers = disabledOthers + owner.id; applyDay(day); conflictAsk = null },
                     onDismiss = { conflictAsk = null },
                 )
@@ -724,8 +724,7 @@ private fun RoutineConflictDialog(name: String, conflicts: List<DayConflict>, on
     val lines = conflicts.joinToString("\n") { String.format(line, it.routine.name, it.days.fullList()) }
     ConflictDialog(
         body = stringResource(R.string.routine_conflict_body, name, lines),
-        confirmLabel = if (conflicts.size == 1) stringResource(R.string.routine_conflict_disable_one, conflicts[0].routine.name)
-        else stringResource(R.string.routine_conflict_disable_many),
+        confirmLabel = stringResource(if (conflicts.size == 1) R.string.routine_conflict_disable_one else R.string.routine_conflict_disable_many),
         onConfirm = onConfirm,
         onDismiss = onDismiss,
     )
@@ -741,7 +740,7 @@ private fun ConflictDialog(body: String, confirmLabel: String, onConfirm: () -> 
         confirmButton = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(confirmLabel, textAlign = TextAlign.Center)
+                    Text(confirmLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
