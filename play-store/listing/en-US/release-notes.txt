@@ -1,7 +1,7 @@
-Parakeet 5.3: the alarm rings by itself and it syncs!
+Parakeet 5.4: the alarm rings by itself and it syncs!
 • Built-in alarm: sound, rising volume, vibration, snooze, even on the lock screen
 • Stop it by sliding, solving a sum, shaking or scanning a QR code
-• Scheduled mode: weekday routines, the alarm re-arms by itself
-• New: sync across phones through a folder of your choice, plus file backup
+• Weekday routines: edit activities, duplicate, switch on and off
+• Sync across phones through a folder of your choice, plus file backup
 • You can always use the Clock app
 • Your activities are kept

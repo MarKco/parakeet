@@ -1,7 +1,7 @@
-Parakeet 5.3: la sveglia suona da sola e si sincronizza!
+Parakeet 5.4: la sveglia suona da sola e si sincronizza!
 • Sveglia integrata: suoneria, volume crescente, vibrazione, posticipo, anche a schermo bloccato
 • Spegnila scorrendo, con un calcolo, scuotendo o con un QR code
-• Modalità Programmata: routine per i giorni, la sveglia si riarma da sola
-• Nuovo: sincronizzazione tra telefoni con una cartella a tua scelta, più backup su file
+• Routine per i giorni della settimana: modifica le attività, duplica, attiva e disattiva
+• Sincronizzazione tra telefoni con una cartella a tua scelta, più backup su file
 • Puoi sempre usare l'app Orologio
 • Le tue attività vengono mantenute
