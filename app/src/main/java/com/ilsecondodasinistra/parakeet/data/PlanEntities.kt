@@ -27,9 +27,9 @@ data class RoutineEntity(
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = 0,
 )
 
-/** Which catalog activities a routine uses. Rows of deleted tasks are harmless (ignored) and come back on undo. */
+/** Which catalog activities a routine uses, and in which order ([position]). Rows of deleted tasks are harmless (ignored) and come back on undo. */
 @Entity(tableName = "routine_tasks", primaryKeys = ["routineId", "taskId"])
-data class RoutineTaskEntity(val routineId: Long, val taskId: Long)
+data class RoutineTaskEntity(val routineId: Long, val taskId: Long, @ColumnInfo(defaultValue = "0") val position: Int = 0)
 
 /** One-time change for one date. [kind]: SKIP, ROUTINE, CUSTOM. [taskIds]: comma separated (CUSTOM only). */
 @Entity(tableName = "day_plans")
@@ -47,7 +47,7 @@ interface PlanDao {
     @Query("SELECT * FROM routines ORDER BY position, id")
     fun observeRoutines(): Flow<List<RoutineEntity>>
 
-    @Query("SELECT * FROM routine_tasks")
+    @Query("SELECT * FROM routine_tasks ORDER BY routineId, position, taskId")
     fun observeRoutineTasks(): Flow<List<RoutineTaskEntity>>
 
     @Query("SELECT * FROM day_plans ORDER BY epochDay")
@@ -87,9 +87,9 @@ interface PlanDao {
     suspend fun insertRoutineTasks(rows: List<RoutineTaskEntity>)
 
     @Transaction
-    suspend fun replaceRoutineTasks(routineId: Long, taskIds: Collection<Long>) {
+    suspend fun replaceRoutineTasks(routineId: Long, taskIds: List<Long>) {
         clearRoutineTasks(routineId)
-        insertRoutineTasks(taskIds.map { RoutineTaskEntity(routineId, it) })
+        insertRoutineTasks(taskIds.mapIndexed { i, id -> RoutineTaskEntity(routineId, id, i) })
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -146,5 +146,13 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             "CREATE TABLE IF NOT EXISTS `sync_tombstones` (`kind` TEXT NOT NULL, `key` TEXT NOT NULL, " +
                 "`localId` INTEGER NOT NULL, `deletedAt` INTEGER NOT NULL, PRIMARY KEY(`kind`, `key`))",
         )
+    }
+}
+
+/** 5.4 → 5.5: the activities of a routine have an order of their own (until now: the order of the catalog). */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `routine_tasks` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE `routine_tasks` SET `position` = COALESCE((SELECT t.`position` FROM `tasks` t WHERE t.`id` = `routine_tasks`.`taskId`), 0)")
     }
 }

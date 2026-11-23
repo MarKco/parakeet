@@ -6,6 +6,7 @@ una cartella condivisa (Syncthing-Fork o qualsiasi provider SAF), ogni dispositi
 ## Cosa viaggia
 - **Attività** (nome, minuti, «tempo per gli imprevisti», posizione), **routine** (nome, colore, uscita, giorni, attiva, posizione, attività membri), **piani del giorno** (una tantum).
   In modo semplice le attività spuntate e l'uscita vivono nella *prima routine*, quindi viaggiano con le routine.
+  **L'ordine** delle attività è della routine (e del piano del giorno): `taskUids` e `taskIds` viaggiano nell'ordine scelto (5.5, Room v5: colonna `position` in `routine_tasks`); un file senza ordine (5.3/5.4) si legge nell'ordine del catalogo. L'imprevisto sta sempre in fondo.
 - **Impostazioni condivise** (`SharedSettings`): modo piano, testo dell'uscita, vibrazione, snooze, sfida (+ operazioni, scosse, QR), promemoria (prima, sera), «Dopo la sveglia» (4 interruttori).
 - Restano **del telefono**: suoneria (l'indirizzo è locale), modo sveglia Orologio/in-app, notifica d'uscita, `tasks.checked`, uscita semplice (`settings.exitTime`), pausa, sveglia armata, sessione e contatori di «Dopo la sveglia», suggerimenti chiusi, cartella/nome/id del sync.
   Le impostazioni del telefono stanno in un blocco `device` del proprio file: nessuno lo unisce, serve solo a «È questo dispositivo».

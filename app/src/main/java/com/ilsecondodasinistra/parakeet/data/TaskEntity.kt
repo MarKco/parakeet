@@ -61,7 +61,7 @@ interface TaskDao {
 
 @Database(
     entities = [TaskEntity::class, RoutineEntity::class, RoutineTaskEntity::class, DayPlanEntity::class, TombstoneEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

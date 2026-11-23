@@ -45,7 +45,7 @@ interface SyncDao {
     @Query("SELECT * FROM routines")
     suspend fun routines(): List<RoutineEntity>
 
-    @Query("SELECT * FROM routine_tasks")
+    @Query("SELECT * FROM routine_tasks ORDER BY routineId, position, taskId")
     suspend fun routineTasks(): List<RoutineTaskEntity>
 
     @Query("SELECT * FROM day_plans")

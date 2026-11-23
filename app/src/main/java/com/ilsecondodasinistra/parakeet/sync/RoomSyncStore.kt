@@ -65,7 +65,7 @@ class RoomSyncStore @Inject constructor(
             }
             val routineRecs = LinkedHashMap<String, RoutineRec>()
             for (r in routines.filter { travels(it.updatedAt) }) {
-                val members = links.filter { it.routineId == r.id }.mapNotNull { taskUid[it.taskId] }.sorted()
+                val members = links.filter { it.routineId == r.id }.sortedBy { it.position }.mapNotNull { taskUid[it.taskId] }
                 routineRecs[r.uid] = RoutineRec(r.uid, r.name, r.color, r.exitMinute, r.daysMask, r.enabled, r.position, members, r.updatedAt)
             }
             for (d in tombs.filter { it.kind == TombstoneEntity.ROUTINE }) {
@@ -76,7 +76,7 @@ class RoomSyncStore @Inject constructor(
             for (p in plans.filter { travels(it.updatedAt) && (full || it.epochDay >= minDay) }) {
                 val routineUid = p.routineId?.let { uidOfRoutine[it] ?: return@let "?" }
                 if (routineUid == "?") continue // its routine is gone from here: nothing to share
-                val members = p.taskIds.split(',').mapNotNull { it.trim().toLongOrNull() }.mapNotNull { taskUid[it] }.sorted()
+                val members = p.taskIds.split(',').mapNotNull { it.trim().toLongOrNull() }.mapNotNull { taskUid[it] }
                 planRecs[p.epochDay.toString()] = DayPlanRec(p.epochDay, p.kind, routineUid, p.exitMinute, members, p.updatedAt)
             }
             for (d in tombs.filter { it.kind == TombstoneEntity.DAY_PLAN }) {
@@ -157,8 +157,8 @@ class RoomSyncStore @Inject constructor(
                         dao.putTombstone(TombstoneEntity(TombstoneEntity.ROUTINE, rec.uid, local?.id ?: 0, rec.updatedAt))
                     }
                 } else {
-                    val wanted = rec.taskUids.mapNotNull { taskId[it] }.toSet()
-                    val have = local?.let { l -> links.filter { it.routineId == l.id }.map { it.taskId }.toSet() }.orEmpty()
+                    val wanted = rec.taskUids.mapNotNull { taskId[it] }.distinct() // in the order of the routine
+                    val have = local?.let { l -> links.filter { it.routineId == l.id }.sortedBy { it.position }.map { it.taskId } }.orEmpty()
                     val differs = local == null || local.name != rec.name || local.color != rec.color || local.exitMinute != rec.exitMinute ||
                         local.daysMask != rec.daysMask || local.enabled != rec.enabled || local.position != rec.position ||
                         (rec.updatedAt > local.updatedAt && wanted != have)
@@ -168,7 +168,7 @@ class RoomSyncStore @Inject constructor(
                         val id = dao.putRoutine(e).let { if (local != null) local.id else it }
                         if (local == null || rec.updatedAt > local.updatedAt) {
                             dao.removeRoutineTasks(id)
-                            dao.putRoutineTasks(wanted.map { RoutineTaskEntity(id, it) })
+                            dao.putRoutineTasks(wanted.mapIndexed { i, t -> RoutineTaskEntity(id, t, i) })
                         }
                         localRoutines[rec.uid] = e.copy(id = id)
                         dao.deleteTombstone(TombstoneEntity.ROUTINE, rec.uid)
@@ -193,7 +193,7 @@ class RoomSyncStore @Inject constructor(
                     if (rid == -1L) continue // its routine has not arrived (or is gone): tried again next round
                     val e = DayPlanEntity(
                         rec.epochDay, rec.kind, rid, rec.exitMinute,
-                        rec.taskUids.mapNotNull { taskId[it] }.sorted().joinToString(","), rec.updatedAt,
+                        rec.taskUids.mapNotNull { taskId[it] }.joinToString(","), rec.updatedAt,
                     )
                     val differs = local == null || local.kind != e.kind || local.routineId != e.routineId ||
                         local.exitMinute != e.exitMinute || local.taskIds != e.taskIds

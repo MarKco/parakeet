@@ -24,7 +24,7 @@ data class Routine(
     val name: String,
     val color: Int,
     val exitTime: LocalTime,
-    val taskIds: Set<Long>,
+    val taskIds: List<Long>, // in the order of the routine
     val days: Set<DayOfWeek> = emptySet(),
     val enabled: Boolean = true,
     val position: Int = 0,
@@ -45,7 +45,7 @@ sealed interface DayPlan {
         override val date: LocalDate,
         val routineId: Long?,
         val exitTime: LocalTime,
-        val taskIds: Set<Long>,
+        val taskIds: List<Long>,
     ) : DayPlan
 }
 
@@ -58,7 +58,7 @@ data class DaySchedule(
     val totalMinutes: Int,
     val oneTime: Boolean,           // comes from a DayPlan, not from the weekly rule
     val skipped: Boolean,           // a weekly alarm exists but is skipped (override or pause)
-    val taskIds: Set<Long> = emptySet(), // activities of that day (routine's, or the tweaked ones)
+    val taskIds: List<Long> = emptyList(), // activities of that day, in order (routine's, or the tweaked ones)
 ) {
     val rings: Boolean get() = wakeAt != null
 }
@@ -78,7 +78,7 @@ object AlarmPlanner {
         if (pausedUntil != null && !date.isAfter(pausedUntil)) {
             return DaySchedule(date, weekly, null, null, 0, oneTime = false, skipped = weekly != null || override != null)
         }
-        val minutesOf = { ids: Set<Long> -> tasks.filter { it.id in ids }.sumOf { it.minutes } }
+        val minutesOf = { ids: List<Long> -> tasks.filter { it.id in ids }.sumOf { it.minutes } }
         return when (override) {
             is DayPlan.Skip -> DaySchedule(date, weekly, null, null, 0, oneTime = true, skipped = true)
             is DayPlan.UseRoutine -> routines.firstOrNull { it.id == override.routineId }
@@ -133,7 +133,7 @@ object AlarmPlanner {
         else -> fallback
     }
 
-    private fun build(date: LocalDate, routine: Routine?, exit: LocalTime, taskIds: Set<Long>, total: Int, oneTime: Boolean): DaySchedule {
+    private fun build(date: LocalDate, routine: Routine?, exit: LocalTime, taskIds: List<Long>, total: Int, oneTime: Boolean): DaySchedule {
         val exitAt = date.atTime(exit.withSecond(0).withNano(0))
         return DaySchedule(date, routine, exitAt, exitAt.minusMinutes(total.toLong()), total, oneTime, skipped = false, taskIds = taskIds)
     }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DirectionsWalk
@@ -70,6 +72,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,6 +87,7 @@ import com.ilsecondodasinistra.parakeet.domain.RoutineColors
 import com.ilsecondodasinistra.parakeet.domain.RoutineRules
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.domain.TaskLabels
+import com.ilsecondodasinistra.parakeet.domain.TaskOrder
 import com.ilsecondodasinistra.parakeet.ui.LcdText
 import com.ilsecondodasinistra.parakeet.ui.TaskDialog
 import com.ilsecondodasinistra.parakeet.ui.TimePickerDialog
@@ -101,6 +106,8 @@ import com.ilsecondodasinistra.parakeet.ui.main.uiColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 // ---- list --------------------------------------------------------------------------------------
 
@@ -325,7 +332,7 @@ fun RoutineEditorScreen(
     var color by rememberSaveable { mutableIntStateOf(existing?.color ?: RoutineColors.first()) }
     var days by rememberSaveable { mutableStateOf(existing?.days?.map { it.value } ?: emptyList()) }
     var exit by rememberSaveable { mutableStateOf((existing?.exitTime ?: template?.exitTime ?: LocalTime.of(8, 0)).toSecondOfDay()) }
-    var taskIds by rememberSaveable { mutableStateOf((existing?.taskIds ?: template?.taskIds ?: emptySet()).toList()) }
+    var taskIds by rememberSaveable { mutableStateOf(existing?.taskIds ?: template?.taskIds ?: emptyList()) }
     var enabled by rememberSaveable { mutableStateOf(existing?.enabled ?: true) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
     var addTask by rememberSaveable { mutableStateOf(false) }
@@ -346,7 +353,18 @@ fun RoutineEditorScreen(
     val edits = editsRaw.mapNotNull(::parseEdit)
     val editById = edits.associateBy { it.taskId }
     fun Task.withEdit() = editById[id]?.let { copy(name = it.name, minutes = it.minutes) } ?: this
-    val routineTasks = state.tasks.filter { it.id in taskIds }.map { it.withEdit() }
+    // The activities of the routine in their order (the "time for the unexpected" last)
+    val ordered = TaskOrder.normalize(taskIds, state.tasks)
+    val routineTasks = ordered.mapNotNull { id -> state.tasks.firstOrNull { it.id == id }?.withEdit() }
+    val lazyListState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        val f = from.key as? Long
+        val t = to.key as? Long
+        val i = ordered.indexOf(f ?: -1L)
+        val j = ordered.indexOf(t ?: -1L)
+        val buffers = state.tasks.filter { it.buffer }.map { it.id }.toSet()
+        if (i >= 0 && j >= 0 && f !in buffers && t !in buffers) taskIds = TaskOrder.move(ordered, i, j)
+    }
     val total = routineTasks.sumOf { it.minutes }
     val labels = remember(state.tasks, state.routines) { TaskLabels.of(state.tasks, state.routines) }
     // Other routines as they will be once saved; only those that are on can clash, and only with a routine that is on
@@ -370,7 +388,7 @@ fun RoutineEditorScreen(
         name = name.trim().ifEmpty { fallbackName },
         color = color,
         exitTime = exitTime,
-        taskIds = taskIds.toSet(),
+        taskIds = TaskOrder.normalize(taskIds, state.tasks),
         days = daySet,
         enabled = enabled,
         position = existing?.position ?: 0,
@@ -423,7 +441,8 @@ fun RoutineEditorScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                Modifier.widthIn(max = 640.dp).fillMaxSize(),
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize(),
+                state = lazyListState,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -519,15 +538,24 @@ fun RoutineEditorScreen(
                     }
                 }
                 items(routineTasks, key = { it.id }) { task ->
-                    RoutineTaskRow(
-                        task = task,
-                        color = Color(color),
-                        onEdit = { editingId = task.id },
-                        onRemove = {
-                            taskIds = taskIds - task.id
-                            editsRaw = editsRaw.filterNot { parseEdit(it)?.taskId == task.id }
-                        },
-                    )
+                    ReorderableItem(reorderState, key = task.id, enabled = !task.buffer) { isDragging ->
+                        RoutineTaskRow(
+                            task = task,
+                            color = Color(color),
+                            dragging = isDragging,
+                            handle = if (task.buffer) null else Modifier.draggableHandle(),
+                            onMove = { delta ->
+                                val i = ordered.indexOf(task.id)
+                                val movable = routineTasks.count { !it.buffer }
+                                if (i >= 0 && i + delta in 0 until movable) taskIds = TaskOrder.move(ordered, i, i + delta)
+                            },
+                            onEdit = { editingId = task.id },
+                            onRemove = {
+                                taskIds = taskIds - task.id
+                                editsRaw = editsRaw.filterNot { parseEdit(it)?.taskId == task.id }
+                            },
+                        )
+                    }
                 }
                 item {
                     OutlinedButton(
@@ -682,29 +710,52 @@ private fun Label(res: Int) {
     )
 }
 
-/** One activity of the routine: tap to edit, X to take it out of this routine (it stays in the catalog). */
+/**
+ * One activity of the routine: a handle to drag it ([handle], none for the "time for the unexpected", which stays last),
+ * tap to edit, X to take it out of this routine (it stays in the catalog).
+ */
 @Composable
-private fun RoutineTaskRow(task: Task, color: Color, onEdit: () -> Unit, onRemove: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-            .background(color.copy(alpha = 0.16f))
-            .clickable(onClickLabel = stringResource(R.string.cd_edit), onClick = onEdit)
-            .heightIn(min = 60.dp).padding(start = 16.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun RoutineTaskRow(task: Task, color: Color, dragging: Boolean, handle: Modifier?, onMove: (delta: Int) -> Unit, onEdit: () -> Unit, onRemove: () -> Unit) {
+    val up = stringResource(R.string.reorder_move_up)
+    val down = stringResource(R.string.reorder_move_down)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (dragging) color.copy(alpha = 0.32f) else color.copy(alpha = 0.16f),
+        shadowElevation = if (dragging) 8.dp else 0.dp,
+        modifier = Modifier.fillMaxWidth().then(
+            if (handle != null) Modifier.semantics { customActions = listOf(CustomAccessibilityAction(up) { onMove(-1); true }, CustomAccessibilityAction(down) { onMove(1); true }) }
+            else Modifier,
+        ),
     ) {
-        if (task.buffer) {
-            Icon(
-                Icons.Outlined.HourglassBottom, contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
-            )
-        }
-        Text(task.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        IconButton(onClick = onEdit) {
-            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.cd_edit_task, task.name), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-        }
-        IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routine_remove_task, task.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.clickable(onClickLabel = stringResource(R.string.cd_edit), onClick = onEdit).heightIn(min = 60.dp).padding(start = 4.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (handle != null) {
+                Box(handle.size(48.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.DragHandle,
+                        contentDescription = stringResource(R.string.reorder_handle, task.name),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Spacer(Modifier.width(12.dp))
+            }
+            if (task.buffer) {
+                Icon(
+                    Icons.Outlined.HourglassBottom, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
+                )
+            }
+            Text(task.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.cd_edit_task, task.name), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routine_remove_task, task.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

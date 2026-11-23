@@ -22,8 +22,8 @@ import java.time.LocalTime
 class AlarmPlannerTest {
 
     private val tasks = listOf(Task(1, "Doccia", 15, true), Task(2, "Colazione", 20, true), Task(3, "Palestra", 45, false))
-    private val work = Routine(1, "Lavoro", 0, LocalTime.of(7, 40), setOf(1, 2), setOf(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
-    private val weekend = Routine(2, "Weekend", 0, LocalTime.of(9, 30), setOf(2), setOf(SATURDAY, SUNDAY), enabled = false)
+    private val work = Routine(1, "Lavoro", 0, LocalTime.of(7, 40), listOf(1, 2), setOf(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY))
+    private val weekend = Routine(2, "Weekend", 0, LocalTime.of(9, 30), listOf(2), setOf(SATURDAY, SUNDAY), enabled = false)
     private val routines = listOf(work, weekend)
 
     // Monday 17 Nov 2026, 21:00
@@ -36,13 +36,21 @@ class AlarmPlannerTest {
         assertEquals("Lavoro", next.routine?.name)
     }
 
+    @Test fun theOrderOfARoutineReachesTheDay() {
+        val reordered = work.copy(taskIds = listOf(2, 1))
+        val day = AlarmPlanner.day(tue, listOf(reordered), emptyMap(), tasks)
+        assertEquals(listOf(2L, 1L), day.taskIds)
+        // Same activities, so the same total whatever the order
+        assertEquals(AlarmPlanner.day(tue, listOf(work), emptyMap(), tasks).totalMinutes, day.totalMinutes)
+    }
+
     @Test fun skipMovesToFollowingDay() {
         val next = AlarmPlanner.next(mondayEvening, routines, mapOf(tue to DayPlan.Skip(tue)), tasks)!!
         assertEquals(tue.plusDays(1), next.date)
     }
 
     @Test fun customTweakOnlyForThatDate() {
-        val custom = DayPlan.Custom(tue, 1, LocalTime.of(8, 0), setOf(1, 3))
+        val custom = DayPlan.Custom(tue, 1, LocalTime.of(8, 0), listOf(1, 3))
         val next = AlarmPlanner.next(mondayEvening, routines, mapOf(tue to custom), tasks)!!
         assertEquals(tue.atTime(7, 0), next.wakeAt)
         assertTrue(next.oneTime)
@@ -63,12 +71,12 @@ class AlarmPlannerTest {
 
     @Test fun alreadyRungDateIsNeverReArmed() {
         val morning = tue.atTime(7, 10)
-        val next = AlarmPlanner.next(morning, routines, mapOf(tue to DayPlan.Custom(tue, 1, LocalTime.of(10, 0), setOf(1))), tasks, lastRungDate = tue)!!
+        val next = AlarmPlanner.next(morning, routines, mapOf(tue to DayPlan.Custom(tue, 1, LocalTime.of(10, 0), listOf(1))), tasks, lastRungDate = tue)!!
         assertEquals(tue.plusDays(1), next.date)
     }
 
     @Test fun oneShotWithoutDaysRingsOnceThenNothing() {
-        val solo = Routine(5, "Solo", 0, LocalTime.of(8, 0), setOf(1))
+        val solo = Routine(5, "Solo", 0, LocalTime.of(8, 0), listOf(1))
         val overrides = mapOf(tue to DayPlan.UseRoutine(tue, 5))
         assertEquals(tue, AlarmPlanner.next(mondayEvening, listOf(solo), overrides, tasks)!!.date)
         assertNull(AlarmPlanner.next(tue.atTime(9, 0), listOf(solo), overrides, tasks))

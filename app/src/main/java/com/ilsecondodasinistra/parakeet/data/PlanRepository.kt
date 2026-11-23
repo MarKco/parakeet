@@ -36,7 +36,7 @@ class PlanRepository @Inject constructor(
         list.map { e ->
             Routine(
                 id = e.id, name = e.name, color = e.color, exitTime = e.exitMinute.toTime(),
-                taskIds = byRoutine[e.id].orEmpty().toSet(), days = e.daysMask.toDays(),
+                taskIds = byRoutine[e.id].orEmpty().distinct(), days = e.daysMask.toDays(),
                 enabled = e.enabled, position = e.position,
             )
         }
@@ -135,7 +135,7 @@ class PlanRepository @Inject constructor(
         if (settings.isPlanMigrated() || !settings.isLegacyMigrated()) return
         val s = settings.current()
         if (dao.routineCount() == 0 && s.exitTime != null) {
-            val checked = tasks.tasks.first().filter { it.checked }.map { it.id }.toSet()
+            val checked = tasks.tasks.first().filter { it.checked }.map { it.id }
             val id = saveRoutine(
                 Routine(name = defaultName, color = RoutineColors.first(), exitTime = s.exitTime, taskIds = checked),
                 seed = true,
@@ -161,7 +161,7 @@ class PlanRepository @Inject constructor(
             KIND_ROUTINE -> routineId?.let { DayPlan.UseRoutine(date, it) }
             KIND_CUSTOM -> DayPlan.Custom(
                 date, routineId, (exitMinute ?: return null).toTime(),
-                taskIds.split(',').mapNotNull { it.trim().toLongOrNull() }.toSet(),
+                taskIds.split(',').mapNotNull { it.trim().toLongOrNull() }.distinct(),
             )
             else -> null
         }

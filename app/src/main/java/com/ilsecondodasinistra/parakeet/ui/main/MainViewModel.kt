@@ -26,6 +26,7 @@ import com.ilsecondodasinistra.parakeet.domain.DayPlan
 import com.ilsecondodasinistra.parakeet.domain.DaySchedule
 import com.ilsecondodasinistra.parakeet.domain.Routine
 import com.ilsecondodasinistra.parakeet.domain.Task
+import com.ilsecondodasinistra.parakeet.domain.TaskOrder
 import com.ilsecondodasinistra.parakeet.domain.WakeUpCalculator
 import com.ilsecondodasinistra.parakeet.domain.WakeUpPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -61,7 +62,7 @@ data class DayUi(
     val override: DayPlan?,
     val routine: Routine?,       // routine in use, or the one it would use
     val exitTime: LocalTime?,
-    val taskIds: Set<Long>,
+    val taskIds: List<Long>,     // the selected activities, in the order of the day
     val paused: Boolean,
     val rung: Boolean,           // its alarm already rang
 ) {
@@ -101,7 +102,7 @@ data class MainUiState(
     val postWakeActive: Boolean = false,
     // Simple mode: the first routine is "the" setup; the plan is what the "Set alarm" button would arm
     val simpleExit: LocalTime? = null,
-    val simpleTaskIds: Set<Long> = emptySet(),
+    val simpleTaskIds: List<Long> = emptyList(),
     val simplePlan: WakeUpPlan? = null,
 )
 
@@ -171,7 +172,7 @@ class MainViewModel @Inject constructor(
             if (simple) null else lastRung,
         )
         val simpleRoutine = d.routines.firstOrNull()
-        val simpleIds = simpleRoutine?.taskIds.orEmpty()
+        val simpleIds = TaskOrder.normalize(simpleRoutine?.taskIds.orEmpty(), d.tasks)
         val simpleExit = simpleRoutine?.exitTime ?: s.exitTime
         val simplePlan = simpleExit?.let { WakeUpCalculator.plan(it, d.tasks.map { t -> t.copy(checked = t.id in simpleIds) }, now) }
         val ribbon = AlarmPlanner.range(today, RIBBON_DAYS, d.routines, d.overrides, d.tasks, paused)
@@ -206,7 +207,7 @@ class MainViewModel @Inject constructor(
                 (next?.taskIds?.count { id -> d.tasks.any { it.id == id && !it.buffer } } ?: 0) >= 2,
             postWakeActive = s.postWake.enabled && s.postWake.ring && (s.postWakeSession?.exitAtMillis ?: 0L) > System.currentTimeMillis(),
             simpleExit = simpleExit,
-            simpleTaskIds = simpleIds.filter { id -> d.tasks.any { it.id == id } }.toSet(),
+            simpleTaskIds = simpleIds,
             simplePlan = simplePlan,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
@@ -238,7 +239,7 @@ class MainViewModel @Inject constructor(
             override = override,
             routine = routine,
             exitTime = custom?.exitTime ?: routine?.exitTime,
-            taskIds = (custom?.taskIds ?: routine?.taskIds.orEmpty()).filter { id -> d.tasks.any { it.id == id } }.toSet(),
+            taskIds = TaskOrder.normalize(custom?.taskIds ?: routine?.taskIds.orEmpty(), d.tasks),
             paused = paused != null && !date.isAfter(paused),
             rung = (lastRung != null && !date.isAfter(lastRung)) || (schedule.wakeAt != null && !schedule.wakeAt.isAfter(now)),
         )
@@ -299,7 +300,8 @@ class MainViewModel @Inject constructor(
 
     fun toggleDayTask(task: Task) = viewModelScope.launch {
         val day = state.value.day ?: return@launch
-        val ids = if (task.id in day.taskIds) day.taskIds - task.id else day.taskIds + task.id
+        // A newly ticked activity goes after the last ticked one (before the cushion)
+        val ids = if (task.id in day.taskIds) day.taskIds - task.id else TaskOrder.added(day.taskIds, task.id, state.value.tasks)
         applyDay(day, day.exitTime ?: return@launch, ids)
     }
 
@@ -322,10 +324,11 @@ class MainViewModel @Inject constructor(
         afterChange()
     }
 
-    private suspend fun applyDay(day: DayUi, exit: LocalTime, taskIds: Set<Long>) {
+    private suspend fun applyDay(day: DayUi, exit: LocalTime, taskIds: List<Long>) {
         val routine = day.routine
-        val catalog = state.value.tasks.map { it.id }.toSet()
-        if (routine != null && routine.exitTime == exit && routine.taskIds.intersect(catalog) == taskIds.intersect(catalog)) {
+        val catalog = state.value.tasks
+        // The same activities in the same order: not a change of the day (the order counts)
+        if (routine != null && routine.exitTime == exit && TaskOrder.normalize(routine.taskIds, catalog) == TaskOrder.normalize(taskIds, catalog)) {
             if (day.weekly?.id == routine.id) plan.clearDayPlan(day.date) else plan.setDayPlan(DayPlan.UseRoutine(day.date, routine.id))
         } else {
             plan.setDayPlan(DayPlan.Custom(day.date, routine?.id, exit, taskIds))
@@ -346,7 +349,7 @@ class MainViewModel @Inject constructor(
         val id = plan.saveRoutine(
             Routine(
                 name = context.getString(R.string.routine_default_name), color = plan.nextColor(),
-                exitTime = settings.current().exitTime ?: LocalTime.of(8, 0), taskIds = emptySet(),
+                exitTime = settings.current().exitTime ?: LocalTime.of(8, 0), taskIds = emptyList(),
             ),
         )
         return plan.currentRoutines().first { it.id == id }
@@ -354,8 +357,35 @@ class MainViewModel @Inject constructor(
 
     fun toggleSimpleTask(task: Task) = viewModelScope.launch {
         val r = simpleRoutine()
-        plan.saveRoutine(r.copy(taskIds = if (task.id in r.taskIds) r.taskIds - task.id else r.taskIds + task.id))
+        plan.saveRoutine(r.copy(taskIds = if (task.id in r.taskIds) r.taskIds - task.id else TaskOrder.added(r.taskIds, task.id, state.value.tasks)))
         alarmSync.sync()
+    }
+
+    // ---- reorder -------------------------------------------------------------------------------------
+
+    /**
+     * Ends the "reorder" of the home list in simple mode: [order] is the new order of the ticked activities.
+     */
+    fun reorderSimple(order: List<Long>) = viewModelScope.launch {
+        val r = simpleRoutine()
+        plan.saveRoutine(r.copy(taskIds = TaskOrder.normalize(order, state.value.tasks)))
+        alarmSync.sync()
+    }
+
+    /**
+     * Ends the "reorder" of the selected day: [order] is the new order of its ticked activities. With [allDays] the order
+     * becomes the one of the routine (every day that follows it); otherwise it is a one-time change of this date.
+     */
+    fun reorderDay(order: List<Long>, allDays: Boolean) = viewModelScope.launch {
+        val day = state.value.day ?: return@launch
+        val ids = TaskOrder.normalize(order, state.value.tasks)
+        val routine = day.routine
+        if (allDays && routine != null && !day.modified) {
+            plan.saveRoutine(routine.copy(taskIds = ids))
+            afterChange()
+        } else {
+            applyDay(day, day.exitTime ?: return@launch, ids)
+        }
     }
 
     fun setSimpleExit(time: LocalTime) = viewModelScope.launch {
@@ -415,7 +445,8 @@ class MainViewModel @Inject constructor(
         edits.forEach { e ->
             val task = state.value.tasks.firstOrNull { it.id == e.taskId } ?: return@forEach
             if (e.onlyHere) {
-                if (e.taskId in taskIds) taskIds = taskIds - e.taskId + tasks.add(e.name, e.minutes, buffer = task.buffer)
+                // The copy takes the place of the original, where it was in the routine
+                if (e.taskId in taskIds) { val copy = tasks.add(e.name, e.minutes, buffer = task.buffer); taskIds = taskIds.map { if (it == e.taskId) copy else it } }
             } else {
                 tasks.update(task.copy(name = e.name, minutes = e.minutes))
             }
@@ -509,12 +540,12 @@ class MainViewModel @Inject constructor(
         val id = tasks.add(name, minutes, buffer = buffer)
         if (state.value.planMode == PlanMode.SIMPLE) {
             val r = simpleRoutine()
-            plan.saveRoutine(r.copy(taskIds = r.taskIds + id))
+            plan.saveRoutine(r.copy(taskIds = TaskOrder.added(r.taskIds, id, state.value.tasks + Task(id, name, minutes, true, buffer = buffer))))
             alarmSync.sync()
             return@launch
         }
         val day = state.value.day
-        if (day?.exitTime != null && day.rings) applyDay(day, day.exitTime, day.taskIds + id)
+        if (day?.exitTime != null && day.rings) applyDay(day, day.exitTime, TaskOrder.added(day.taskIds, id, state.value.tasks + Task(id, name, minutes, true, buffer = buffer)))
     }
 
     fun updateTask(task: Task) = viewModelScope.launch { tasks.update(task); afterChange() }
@@ -591,7 +622,7 @@ class MainViewModel @Inject constructor(
         val ids = if (tasks.count() == 0) chosen.map { tasks.add(it.name, it.minutes, buffer = it.buffer, seed = true) }
         else tasks.tasks.first().filter { it.checked }.map { it.id }
         val id = plan.saveRoutine(
-            Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids.toSet(), days = days),
+            Routine(name = routineName, color = plan.nextColor(), exitTime = exitTime, taskIds = ids, days = days),
             seed = true,
         )
         settings.setPlanMode(if (scheduled) PlanMode.SCHEDULED else PlanMode.SIMPLE)

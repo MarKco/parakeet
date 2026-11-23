@@ -22,7 +22,7 @@ class PlanMappingTest {
 
     @Test fun exitAfterMidnightWakesTheEveningBefore() {
         val wed = LocalDate.of(2026, 11, 18)
-        val r = Routine(1, "Notte", 0, LocalTime.of(0, 0), setOf(1), setOf(DayOfWeek.WEDNESDAY))
+        val r = Routine(1, "Notte", 0, LocalTime.of(0, 0), listOf(1), setOf(DayOfWeek.WEDNESDAY))
         val next = AlarmPlanner.next(wed.minusDays(1).atTime(23, 0), listOf(r), emptyMap(), listOf(Task(1, "Doccia", 45, true)))!!
         assertEquals(wed, next.date)
         assertEquals(wed.minusDays(1).atTime(23, 15), next.wakeAt)

@@ -10,7 +10,7 @@ import java.time.LocalTime
 class TaskLabelsTest {
 
     private fun routine(id: Long, name: String, vararg tasks: Long) =
-        Routine(id, name, 0, LocalTime.of(8, 0), tasks.toSet())
+        Routine(id, name, 0, LocalTime.of(8, 0), tasks.toList())
 
     @Test fun uniqueNamesStayPlain() {
         val tasks = listOf(Task(1, "Doccia", 15, true), Task(2, "Colazione", 20, true))

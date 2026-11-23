@@ -201,6 +201,16 @@
     <string name="routine_conflict_disable_many">Disattiva le altre e attiva questa</string>
     <string name="routine_conflict_day_body">%1$s è già coperto da «%2$s», che è attiva. Vuoi disattivarla per usare quel giorno qui?</string>
     <string name="routine_conflict_turn_off">Disattiva l\'altra e usa %1$s</string>
+    <string name="reorder_action">Riordina</string>
+    <string name="reorder_done">Fine</string>
+    <string name="reorder_hint">Trascina le maniglie per cambiare l\'ordine</string>
+    <string name="reorder_handle">Riordina %1$s</string>
+    <string name="reorder_move_up">Sposta su</string>
+    <string name="reorder_move_down">Sposta giù</string>
+    <string name="reorder_scope_title">Nuovo ordine</string>
+    <string name="reorder_scope_body">Vuoi usarlo in tutte le giornate di «%1$s» o solo in questa?</string>
+    <string name="reorder_scope_all">Tutte le giornate</string>
+    <string name="reorder_scope_one">Solo questa giornata</string>
     <string name="routine_card_duplicate">Duplica</string>
     <string name="routine_duplicate">Duplica routine</string>
     <string name="routine_copy_name">%1$s (copia)</string>

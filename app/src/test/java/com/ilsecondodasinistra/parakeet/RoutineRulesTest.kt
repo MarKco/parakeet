@@ -14,7 +14,7 @@ import java.time.LocalTime
 class RoutineRulesTest {
 
     private fun routine(id: Long, enabled: Boolean, vararg days: java.time.DayOfWeek) =
-        Routine(id, "R$id", 0, LocalTime.of(8, 0), emptySet(), days.toSet(), enabled)
+        Routine(id, "R$id", 0, LocalTime.of(8, 0), emptyList(), days.toSet(), enabled)
 
     @Test fun overlappingRoutineThatIsOnBlocks() {
         val others = listOf(routine(1, true, MONDAY, TUESDAY, FRIDAY), routine(2, true, SATURDAY))

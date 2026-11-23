@@ -22,8 +22,8 @@ android {
         applicationId = "com.ilsecondodasinistra.parakeet"
         minSdk = 29
         targetSdk = 36
-        versionCode = 53
-        versionName = "5.3"
+        versionCode = 55
+        versionName = "5.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.haze.materials)
+    implementation(libs.reorderable) // drag handles to reorder the activities (Apache 2.0)
 
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)

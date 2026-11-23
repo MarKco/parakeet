@@ -93,6 +93,17 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import com.ilsecondodasinistra.parakeet.domain.TaskOrder
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -173,6 +184,20 @@ fun MainScreen(
     var showMenu by remember { mutableStateOf(false) }
     var editingTaskId by rememberSaveable { mutableStateOf<Long?>(null) }
     var iconTrigger by remember { mutableIntStateOf(0) }
+    // "Reorder" mode of the activity list: the ticked ones in the order being chosen, applied when it ends
+    var reordering by rememberSaveable { mutableStateOf(false) }
+    var reorderDraft by rememberSaveable { mutableStateOf<List<Long>>(emptyList()) }
+    var askReorderScope by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val bufferIds = remember(state.tasks) { state.tasks.filter { it.buffer }.map { it.id }.toSet() }
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val f = from.key as? Long
+        val t = to.key as? Long
+        val i = reorderDraft.indexOf(f ?: -1L)
+        val j = reorderDraft.indexOf(t ?: -1L)
+        // Only the ticked activities move; the "time for the unexpected" stays last
+        if (i >= 0 && j >= 0 && f !in bufferIds && t !in bufferIds) reorderDraft = TaskOrder.move(reorderDraft, i, j)
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val haze = rememberHazeState()
     val config = LocalConfiguration.current
@@ -180,6 +205,8 @@ fun MainScreen(
     val wide = config.screenWidthDp >= 720 && config.screenWidthDp > config.screenHeightDp
     val day = state.day
     val simple = state.planMode == PlanMode.SIMPLE
+    // Another day or another mode: whatever was being reordered no longer applies
+    LaunchedEffect(day?.date, simple) { reordering = false; askReorderScope = false }
 
     // The in-app alarm needs notifications: without them it rings but cannot be stopped from the lock screen
     var notificationsOn by remember { mutableStateOf(Notifications.canPost(context)) }
@@ -288,8 +315,18 @@ fun MainScreen(
     ) { padding ->
         // The activity list, shared by both modes: [checkedIds] are the ticked activities
         val taskLabels = remember(state.tasks, state.routines) { TaskLabels.of(state.tasks, state.routines) }
-        fun LazyListScope.taskItems(checkedIds: Set<Long>, onToggle: (Task) -> Unit) {
-        item(key = "section") { SectionHeader(selected = checkedIds.size, total = state.tasks.size) }
+        fun LazyListScope.taskItems(checkedIds: List<Long>, onToggle: (Task) -> Unit, onReorderEnd: (draft: List<Long>) -> Unit) {
+        item(key = "section") {
+            SectionHeader(
+                selected = checkedIds.size,
+                total = state.tasks.size,
+                canReorder = checkedIds.count { it !in bufferIds } >= 2,
+                reordering = reordering,
+                onToggleReorder = {
+                    if (reordering) onReorderEnd(reorderDraft) else { reorderDraft = checkedIds; reordering = true }
+                },
+            )
+        }
         if (state.tasks.isEmpty()) {
             item(key = "empty") {
                 Text(
@@ -301,10 +338,39 @@ fun MainScreen(
                 )
             }
         }
-        items(state.tasks, key = { it.id }) { task ->
+        // The ticked activities in their order (the cushion after them), then the ones that are not ticked
+        val ticked = if (reordering) reorderDraft else checkedIds
+        val shownTasks = TaskOrder.display(ticked, state.tasks)
+        if (reordering) {
+            item(key = "reorderHint") {
+                Text(
+                    stringResource(R.string.reorder_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+        }
+        items(shownTasks, key = { it.id }) { task ->
             // Two activities with the same name (one made "only in a routine") show their routines in brackets
-            val shown = task.copy(checked = task.id in checkedIds, name = taskLabels[task.id] ?: task.name)
-            if (SWIPE_TO_DELETE) {
+            val isTicked = task.id in ticked
+            val shown = task.copy(checked = isTicked, name = taskLabels[task.id] ?: task.name)
+            if (reordering) {
+                val canDrag = isTicked && !task.buffer
+                ReorderableItem(reorderState, key = task.id, enabled = canDrag) { isDragging ->
+                    ReorderTaskRow(
+                        task = shown,
+                        canDrag = canDrag,
+                        dragging = isDragging,
+                        handle = if (canDrag) Modifier.draggableHandle() else Modifier,
+                        onMove = { delta ->
+                            val i = reorderDraft.indexOf(task.id)
+                            val movable = reorderDraft.count { it !in bufferIds }
+                            if (i >= 0 && i + delta in 0 until movable) reorderDraft = TaskOrder.move(reorderDraft, i, i + delta)
+                        },
+                    )
+                }
+            } else if (SWIPE_TO_DELETE) {
                 SwipeableTaskRow(
                     task = shown,
                     onToggle = onToggle,
@@ -318,19 +384,21 @@ fun MainScreen(
                 }
             }
         }
-        item(key = "add") {
-            OutlinedButton(
-                onClick = { showAddDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 56.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.add_task), style = MaterialTheme.typography.titleSmall)
+        if (!reordering) {
+            item(key = "add") {
+                OutlinedButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.add_task), style = MaterialTheme.typography.titleSmall)
+                }
             }
-        }
-        if (state.showBufferHint) {
-            item(key = "bufferHint") { BufferHint(onAdd = viewModel::addBuffer, onDismiss = viewModel::dismissBufferHint) }
+            if (state.showBufferHint) {
+                item(key = "bufferHint") { BufferHint(onAdd = viewModel::addBuffer, onDismiss = viewModel::dismissBufferHint) }
+            }
         }
         }
         val openPostWake = { context.startActivity(Intent(context, PostWakeActivity::class.java)) }
@@ -418,13 +486,24 @@ fun MainScreen(
                             ModifiedBanner(day, onReset = viewModel::resetDay, onSave = viewModel::saveDayToRoutine)
                         }
                     }
-                    taskItems(day.taskIds) { viewModel.toggleDayTask(it) }
+                    taskItems(day.taskIds, onToggle = { viewModel.toggleDayTask(it) }, onReorderEnd = { draft ->
+                        val changed = TaskOrder.normalize(draft, state.tasks) != day.taskIds
+                        when {
+                            !changed -> reordering = false
+                            // A day that follows a routine and was not changed: ask whether the order is for every day of it
+                            day.routine != null && !day.modified -> askReorderScope = true
+                            else -> { viewModel.reorderDay(draft, allDays = false); reordering = false }
+                        }
+                    })
                 }
             }
         }
 
         val simpleItems: LazyListScope.() -> Unit = {
-            taskItems(state.simpleTaskIds) { viewModel.toggleSimpleTask(it); iconTrigger++ }
+            taskItems(state.simpleTaskIds, onToggle = { viewModel.toggleSimpleTask(it); iconTrigger++ }, onReorderEnd = { draft ->
+                if (TaskOrder.normalize(draft, state.tasks) != state.simpleTaskIds) viewModel.reorderSimple(draft)
+                reordering = false
+            })
         }
         val overviewContent = if (simple) simpleOverview else overview
         val listContent = if (simple) simpleItems else dayItems
@@ -448,6 +527,7 @@ fun MainScreen(
                     else if (state.alarmMode == AlarmMode.CLOCK) SendToClockButton(state, viewModel::sendToClock)
                 }
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(0.54f).fillMaxHeight(),
                     contentPadding = PaddingValues(start = 8.dp, end = ScreenPadding, top = 4.dp, bottom = padding.calculateBottomPadding() + 24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -457,6 +537,7 @@ fun MainScreen(
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxSize().hazeSource(haze),
                     contentPadding = PaddingValues(
                         start = ScreenPadding,
@@ -512,6 +593,29 @@ fun MainScreen(
             onNew = { showRoutineSheet = false; onEditRoutine(0L, day.date) },
             onEdit = { showRoutineSheet = false; onEditRoutine(it.id, null) },
             onDismiss = { showRoutineSheet = false },
+        )
+    }
+    if (askReorderScope && day?.routine != null) {
+        AlertDialog(
+            onDismissRequest = { askReorderScope = false },
+            title = { Text(stringResource(R.string.reorder_scope_title)) },
+            text = { Text(stringResource(R.string.reorder_scope_body, day.routine.name)) },
+            confirmButton = {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { viewModel.reorderDay(reorderDraft, allDays = true); askReorderScope = false; reordering = false },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.reorder_scope_all)) }
+                    OutlinedButton(
+                        onClick = { viewModel.reorderDay(reorderDraft, allDays = false); askReorderScope = false; reordering = false },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.reorder_scope_one)) }
+                    TextButton(
+                        onClick = { askReorderScope = false; reordering = false },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+            },
         )
     }
     if (showPause) PauseDialog(today = state.now.toLocalDate(), onPause = { viewModel.pauseUntil(it); showPause = false }, onDismiss = { showPause = false })
@@ -636,11 +740,28 @@ private fun ClockStatusCard(alarm: AlarmStatus, onCancel: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(selected: Int, total: Int) {
+private fun SectionHeader(selected: Int, total: Int, canReorder: Boolean, reordering: Boolean, onToggleReorder: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 2.dp), verticalAlignment = Alignment.Bottom) {
-        Text(stringResource(R.string.tasks_section), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        if (total > 0) {
-            Text(stringResource(R.string.tasks_selected, selected, total), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.tasks_section), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            if (total > 0) {
+                Text(stringResource(R.string.tasks_selected, selected, total), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (canReorder || reordering) {
+            if (reordering) {
+                FilledTonalButton(onClick = onToggleReorder, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.reorder_done))
+                }
+            } else {
+                TextButton(onClick = onToggleReorder, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Icon(Icons.Outlined.SwapVert, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.reorder_action))
+                }
+            }
         }
     }
 }
@@ -858,5 +979,64 @@ private fun SendToClockButton(state: MainUiState, onSend: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** An activity while the list is being reordered: a handle to drag it (only the ticked ones), no ticking or editing. */
+@Composable
+private fun ReorderTaskRow(task: Task, canDrag: Boolean, dragging: Boolean, handle: Modifier, onMove: (delta: Int) -> Unit) {
+    val up = stringResource(R.string.reorder_move_up)
+    val down = stringResource(R.string.reorder_move_down)
+    val container = when {
+        dragging -> MaterialTheme.colorScheme.secondaryContainer
+        !task.checked -> MaterialTheme.colorScheme.surfaceContainer
+        isSystemInDarkTheme() -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = container,
+        shadowElevation = if (dragging) 8.dp else 0.dp,
+        modifier = Modifier.fillMaxWidth().then(
+            if (canDrag) Modifier.semantics { customActions = listOf(CustomAccessibilityAction(up) { onMove(-1); true }, CustomAccessibilityAction(down) { onMove(1); true }) }
+            else Modifier,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.heightIn(min = 72.dp).padding(start = 8.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (canDrag) {
+                Box(handle.size(48.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.DragHandle,
+                        contentDescription = stringResource(R.string.reorder_handle, task.name),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Spacer(Modifier.width(48.dp))
+            }
+            if (task.buffer) {
+                Icon(
+                    Icons.Outlined.HourglassBottom, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
+                )
+            }
+            Text(
+                task.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (task.checked) 1f else 0.5f),
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+            )
+            Text(
+                formatDuration(task.minutes),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
     }
 }

@@ -84,7 +84,8 @@ class PostWake @Inject constructor(
         val schedule = alarmSync.dayFor(LocalDate.ofEpochDay(day))
         val wake = schedule.wakeAt ?: return false
         val exit = schedule.exitAt ?: return false
-        val steps = tasks.tasks.first().filter { it.id in schedule.taskIds }
+        val byId = tasks.tasks.first().associateBy { it.id }
+        val steps = schedule.taskIds.mapNotNull(byId::get) // in the order of the day
         // Two activities at least (the cushion of the plan is not one); the cushion stays in the session for the ring
         if (steps.count { !it.buffer } < 2 || exit.toMillis() <= System.currentTimeMillis()) return false
         start(
@@ -100,7 +101,8 @@ class PostWake @Inject constructor(
     suspend fun startDemo(): Boolean = mutex.withLock {
         val catalog = tasks.tasks.first()
         val planned = alarmSync.next()?.taskIds.orEmpty()
-        var steps = catalog.filter { it.id in planned }
+        val byId = catalog.associateBy { it.id }
+        var steps = planned.mapNotNull(byId::get)
         if (steps.count { !it.buffer } < 2) steps = catalog.filter { it.checked }
         if (steps.count { !it.buffer } < 2) steps = catalog
         // A handful of activities, and the cushion of the plan if there is one
