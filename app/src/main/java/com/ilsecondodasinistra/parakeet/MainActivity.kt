@@ -140,6 +140,8 @@ private fun ParakeetRoot(onReady: () -> Unit, viewModel: MainViewModel = hiltVie
                         state = state,
                         viewModel = viewModel,
                         onBack = onBack,
+                        // The copy replaces the editor on screen, so back returns to the list
+                        onDuplicated = { id -> backStack.removeAt(backStack.lastIndex); backStack.add(RoutineEditorKey(id, -1L)) },
                     )
                 }
                 entry<SettingsKey> { SettingsScreen(state, viewModel, onBack = onBack) }

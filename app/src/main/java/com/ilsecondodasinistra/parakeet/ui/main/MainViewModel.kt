@@ -394,9 +394,31 @@ class MainViewModel @Inject constructor(
 
     // ---- routines --------------------------------------------------------------------------------
 
-    /** Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only. */
-    fun saveRoutine(routine: Routine, forDate: LocalDate?) = viewModelScope.launch {
-        val id = plan.saveRoutine(routine)
+    /** Edit of an activity made in the routine editor, applied when the routine is saved. */
+    data class TaskEdit(val taskId: Long, val name: String, val minutes: Int, val onlyHere: Boolean)
+
+    /**
+     * Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only.
+     * [edits]: "everywhere" ones change the shared activity; "only here" ones give the routine its own copy of it
+     * (the other routines keep the original). Calls [onSaved] with the saved routine once it is stored.
+     */
+    fun saveRoutine(
+        routine: Routine,
+        forDate: LocalDate?,
+        edits: List<TaskEdit> = emptyList(),
+        onSaved: (Routine) -> Unit = {},
+    ) = viewModelScope.launch {
+        var taskIds = routine.taskIds
+        edits.forEach { e ->
+            val task = state.value.tasks.firstOrNull { it.id == e.taskId } ?: return@forEach
+            if (e.onlyHere) {
+                if (e.taskId in taskIds) taskIds = taskIds - e.taskId + tasks.add(e.name, e.minutes, buffer = task.buffer)
+            } else {
+                tasks.update(task.copy(name = e.name, minutes = e.minutes))
+            }
+        }
+        val toSave = routine.copy(taskIds = taskIds)
+        val id = plan.saveRoutine(toSave)
         // One-time "use this routine" plans on days it now covers every week are redundant
         if (routine.enabled) {
             plan.currentOverrides().values
@@ -409,6 +431,21 @@ class MainViewModel @Inject constructor(
             selectedDate.value = forDate
         }
         afterChange()
+        onSaved(toSave.copy(id = id))
+    }
+
+    /** New routine from [routine]: same exit time and activities, a new colour, no days; [onCreated] gets its id. */
+    fun duplicateRoutine(routine: Routine, onCreated: (Long) -> Unit) = viewModelScope.launch {
+        val copy = routine.copy(
+            id = 0,
+            name = context.getString(R.string.routine_copy_name, routine.name),
+            color = plan.nextColor(),
+            days = emptySet(),
+            enabled = true,
+        )
+        val id = plan.saveRoutine(copy)
+        afterChange()
+        onCreated(id)
     }
 
     fun setRoutineEnabled(routine: Routine, enabled: Boolean) = viewModelScope.launch {

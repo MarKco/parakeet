@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -28,9 +30,11 @@ import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,6 +73,8 @@ import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
 import com.ilsecondodasinistra.parakeet.domain.Routine
 import com.ilsecondodasinistra.parakeet.domain.RoutineColors
+import com.ilsecondodasinistra.parakeet.domain.Task
+import com.ilsecondodasinistra.parakeet.domain.TaskLabels
 import com.ilsecondodasinistra.parakeet.ui.LcdText
 import com.ilsecondodasinistra.parakeet.ui.TaskDialog
 import com.ilsecondodasinistra.parakeet.ui.TimePickerDialog
@@ -76,6 +83,7 @@ import com.ilsecondodasinistra.parakeet.ui.lcd
 import com.ilsecondodasinistra.parakeet.ui.main.MainUiState
 import com.ilsecondodasinistra.parakeet.ui.main.BufferHint
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
+import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel.TaskEdit
 import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
 import com.ilsecondodasinistra.parakeet.ui.main.letter
 import com.ilsecondodasinistra.parakeet.ui.main.shortList
@@ -128,6 +136,7 @@ fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                         totalMinutes = state.tasks.filter { it.id in r.taskIds }.sumOf { it.minutes },
                         onClick = { onEdit(r.id) },
                         onToggle = { viewModel.setRoutineEnabled(r, it) },
+                        onDuplicate = { viewModel.duplicateRoutine(r) { id -> onEdit(id) } },
                     )
                 }
             }
@@ -136,7 +145,7 @@ fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
 }
 
 @Composable
-private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit, onToggle: (Boolean) -> Unit) {
+private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit, onToggle: (Boolean) -> Unit, onDuplicate: () -> Unit) {
     val wake = routine.exitTime.minusMinutes(totalMinutes.toLong())
     Surface(
         onClick = onClick,
@@ -171,6 +180,9 @@ private fun RoutineCard(routine: Routine, totalMinutes: Int, onClick: () -> Unit
                     }
                 }
             }
+            IconButton(onClick = onDuplicate) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.routine_duplicate), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Switch(
                 checked = routine.enabled,
                 onCheckedChange = onToggle,
@@ -194,6 +206,7 @@ fun RoutineEditorScreen(
     state: MainUiState,
     viewModel: MainViewModel,
     onBack: () -> Unit,
+    onDuplicated: (Long) -> Unit,
 ) {
     val existing = state.routines.firstOrNull { it.id == routineId }
     val template = existing ?: state.routines.firstOrNull()
@@ -214,12 +227,22 @@ fun RoutineEditorScreen(
     var pickTime by rememberSaveable { mutableStateOf(false) }
     var addTask by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    // Activity edits made here, applied on save: "id \t scope \t minutes \t name" (scope H = only here, E = everywhere)
+    var editsRaw by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var pendingRaw by rememberSaveable { mutableStateOf<String?>(null) }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { if (existing == null) color = viewModel.nextRoutineColor() }
 
     val daySet = days.map { DayOfWeek.of(it) }.toSet()
     val exitTime = LocalTime.ofSecondOfDay(exit.toLong())
-    val total = state.tasks.filter { it.id in taskIds }.sumOf { it.minutes }
+    val edits = editsRaw.mapNotNull(::parseEdit)
+    val editById = edits.associateBy { it.taskId }
+    fun Task.withEdit() = editById[id]?.let { copy(name = it.name, minutes = it.minutes) } ?: this
+    val routineTasks = state.tasks.filter { it.id in taskIds }.map { it.withEdit() }
+    val total = routineTasks.sumOf { it.minutes }
+    val labels = remember(state.tasks, state.routines) { TaskLabels.of(state.tasks, state.routines) }
     val owners = state.routines.filter { it.id != routineId }.flatMap { r -> r.days.map { it to r } }.toMap()
     val moved = daySet.mapNotNull { d -> owners[d]?.let { d to it } }
 
@@ -230,19 +253,42 @@ fun RoutineEditorScreen(
         }
     }
 
+    fun buildRoutine() = Routine(
+        id = existing?.id ?: 0L,
+        name = name.trim().ifEmpty { fallbackName },
+        color = color,
+        exitTime = exitTime,
+        taskIds = taskIds.toSet(),
+        days = daySet,
+        enabled = enabled,
+        position = existing?.position ?: 0,
+    )
+
     fun save() {
-        val routine = Routine(
-            id = existing?.id ?: 0L,
-            name = name.trim().ifEmpty { fallbackName },
-            color = color,
-            exitTime = exitTime,
-            taskIds = taskIds.toSet(),
-            days = daySet,
-            enabled = enabled,
-            position = existing?.position ?: 0,
-        )
-        viewModel.saveRoutine(routine, forDate)
+        viewModel.saveRoutine(buildRoutine(), forDate, edits)
         onBack()
+    }
+
+    /** Saves what is on screen, then opens a copy of it (same exit time and activities, no days). */
+    fun duplicate() {
+        viewModel.saveRoutine(buildRoutine(), null, edits) { saved -> viewModel.duplicateRoutine(saved, onDuplicated) }
+    }
+
+    fun putEdit(task: Task, newName: String, newMinutes: Int, onlyHere: Boolean) {
+        editsRaw = editsRaw.filterNot { parseEdit(it)?.taskId == task.id } +
+            if (newName == task.name && newMinutes == task.minutes) emptyList() else listOf(encodeEdit(TaskEdit(task.id, newName, newMinutes, onlyHere)))
+    }
+
+    /** An activity of other routines too asks "only here or everywhere"; otherwise the question has no point. */
+    fun requestEdit(task: Task, newName: String, newMinutes: Int) {
+        val earlier = editById[task.id]
+        when {
+            newName == task.name && newMinutes == task.minutes -> putEdit(task, newName, newMinutes, false)
+            earlier != null -> putEdit(task, newName, newMinutes, earlier.onlyHere)
+            state.routines.any { it.id != routineId && task.id in it.taskIds } ->
+                pendingRaw = encodeEdit(TaskEdit(task.id, newName, newMinutes, false))
+            else -> putEdit(task, newName, newMinutes, false)
+        }
     }
 
     Scaffold(
@@ -253,6 +299,11 @@ fun RoutineEditorScreen(
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back)) }
                 },
                 actions = {
+                    if (existing != null) {
+                        IconButton(onClick = ::duplicate) {
+                            Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.routine_duplicate))
+                        }
+                    }
                     IconButton(onClick = ::save) { Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.save)) }
                 },
             )
@@ -347,31 +398,30 @@ fun RoutineEditorScreen(
                     )
                 }
                 item { Label(R.string.routine_activities) }
-                items(state.tasks, key = { it.id }) { task ->
-                    val checked = task.id in taskIds
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(if (checked) Color(color).copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainer)
-                            .toggleable(value = checked, role = Role.Checkbox, onValueChange = {
-                                taskIds = if (checked) taskIds - task.id else taskIds + task.id
-                            })
-                            .heightIn(min = 56.dp).padding(start = 4.dp, end = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = checked, onCheckedChange = null, modifier = Modifier.padding(12.dp))
-                        if (task.buffer) {
-                            Icon(
-                                Icons.Outlined.HourglassBottom, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
-                            )
-                        }
-                        Text(task.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (routineTasks.isEmpty()) {
+                    item {
+                        Text(
+                            stringResource(R.string.routine_tasks_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                        )
                     }
+                }
+                items(routineTasks, key = { it.id }) { task ->
+                    RoutineTaskRow(
+                        task = task,
+                        color = Color(color),
+                        onEdit = { editingId = task.id },
+                        onRemove = {
+                            taskIds = taskIds - task.id
+                            editsRaw = editsRaw.filterNot { parseEdit(it)?.taskId == task.id }
+                        },
+                    )
                 }
                 item {
                     OutlinedButton(
-                        onClick = { addTask = true },
+                        onClick = { showPicker = true },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         shape = RoundedCornerShape(16.dp),
                     ) {
@@ -409,6 +459,63 @@ fun RoutineEditorScreen(
     if (pickTime) {
         TimePickerDialog(initial = exitTime, onConfirm = { exit = it.toSecondOfDay(); pickTime = false }, onDismiss = { pickTime = false })
     }
+    state.tasks.firstOrNull { it.id == editingId }?.let { base ->
+        TaskDialog(
+            task = base.withEdit(),
+            onSave = { n, m -> editingId = null; requestEdit(base, n, m) },
+            onDelete = null,
+            onDismiss = { editingId = null },
+        )
+    }
+    pendingRaw?.let(::parseEdit)?.let { pending ->
+        val base = state.tasks.firstOrNull { it.id == pending.taskId }
+        if (base == null) pendingRaw = null else AlertDialog(
+            onDismissRequest = { pendingRaw = null },
+            title = { Text(stringResource(R.string.task_scope_title)) },
+            text = { Text(stringResource(R.string.task_scope_body, base.name)) },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(onClick = { putEdit(base, pending.name, pending.minutes, true); pendingRaw = null }) {
+                        Text(stringResource(R.string.task_scope_only_here))
+                    }
+                    TextButton(onClick = { putEdit(base, pending.name, pending.minutes, false); pendingRaw = null }) {
+                        Text(stringResource(R.string.task_scope_everywhere))
+                    }
+                    TextButton(onClick = { pendingRaw = null }) {
+                        Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+        )
+    }
+    if (showPicker) {
+        val candidates = state.tasks.filter { it.id !in taskIds }
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text(stringResource(R.string.routine_pick_title)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (candidates.isEmpty()) {
+                        Text(stringResource(R.string.routine_pick_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    candidates.forEach { task ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .clickable { taskIds = taskIds + task.id }
+                                .heightIn(min = 52.dp).padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(labels[task.id] ?: task.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showPicker = false; addTask = true }) { Text(stringResource(R.string.routine_pick_new)) } },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(R.string.routine_pick_done)) } },
+        )
+    }
     if (addTask) {
         TaskDialog(
             task = null,
@@ -440,4 +547,39 @@ private fun Label(res: Int) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp),
     )
+}
+
+/** One activity of the routine: tap to edit, X to take it out of this routine (it stays in the catalog). */
+@Composable
+private fun RoutineTaskRow(task: Task, color: Color, onEdit: () -> Unit, onRemove: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.16f))
+            .clickable(onClickLabel = stringResource(R.string.cd_edit), onClick = onEdit)
+            .heightIn(min = 60.dp).padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (task.buffer) {
+            Icon(
+                Icons.Outlined.HourglassBottom, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp).size(18.dp),
+            )
+        }
+        Text(task.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(formatDuration(task.minutes), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        IconButton(onClick = onEdit) {
+            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.cd_edit_task, task.name), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        }
+        IconButton(onClick = onRemove) {
+            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.routine_remove_task, task.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+private fun encodeEdit(e: TaskEdit) = "${e.taskId}\t${if (e.onlyHere) "H" else "E"}\t${e.minutes}\t${e.name}"
+
+private fun parseEdit(raw: String): TaskEdit? {
+    val p = raw.split('\t', limit = 4)
+    if (p.size < 4) return null
+    return TaskEdit(p[0].toLongOrNull() ?: return null, p[3], p[2].toIntOrNull() ?: return null, p[1] == "H")
 }
