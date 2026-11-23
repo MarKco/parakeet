@@ -23,11 +23,14 @@ PROMEMORIA UTILI (FACOLTATIVI)
 • Una notifica silenziosa prima della sveglia, per saltarla se sei già sveglio.
 • Un riepilogo la sera prima con l'ora della sveglia di domani e il tasto "Salta".
 
+PIÙ TELEFONI, UN SOLO PIANO (FACOLTATIVO)
+Scegli una cartella (per esempio sincronizzata con Syncthing o con il tuo servizio cloud) e Parakeet tiene allineati attività, routine e impostazioni sui tuoi dispositivi. Parakeet non si connette a nulla: scrive solo nella cartella che scegli tu. Dalle Impostazioni puoi anche salvare e ripristinare un file di backup.
+
 PERCHÉ TI PIACERÀ
 • Le tue attività, le tue durate: aggiungi, modifica ed elimina quando vuoi.
 • Primo avvio guidato in pochi passi, con un'anteprima dell'ora della sveglia.
 • Tema chiaro e scuro, pensato anche per tablet.
-• Nessun account, nessuna pubblicità, nessuna connessione: le tue attività restano sul tuo dispositivo.
+• Nessun account, nessuna pubblicità, nessuna connessione a Internet: le tue attività restano sul tuo dispositivo (o nella cartella che scegli).
 
 AGGIORNAMENTO DALLA VERSIONE PRECEDENTE
 Le tue attività e l'orario di uscita vengono mantenuti automaticamente. Se preferisci, puoi continuare a usare l'app Orologio di sistema: la scelta è nelle Impostazioni.

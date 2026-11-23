@@ -23,11 +23,14 @@ HELPFUL REMINDERS (OPTIONAL)
 • A silent notification before the alarm, so you can skip it if you're already up.
 • An evening summary with tomorrow's alarm and a "Skip" button.
 
+MORE PHONES, ONE PLAN (OPTIONAL)
+Pick a folder (synced with Syncthing or your own cloud service, say) and Parakeet keeps your activities, routines and settings aligned across your devices. Parakeet connects to nothing: it only writes to the folder you choose. In Settings you can also save and restore a backup file.
+
 WHY YOU'LL LIKE IT
 • Your activities, your durations: add, edit and delete whenever you like.
 • A short guided first run with a preview of your wake-up time.
 • Light and dark theme, designed for tablets too.
-• No account, no ads, no network connection: your activities stay on your device.
+• No account, no ads, no Internet connection: your activities stay on your device (or in the folder you choose).
 
 UPDATING FROM THE PREVIOUS VERSION
 Your activities and exit time are kept automatically. If you prefer, you can keep using the system Clock app: the choice is in Settings.
