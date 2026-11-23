@@ -75,8 +75,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.domain.AlarmPlanner
+import com.ilsecondodasinistra.parakeet.domain.DayConflict
 import com.ilsecondodasinistra.parakeet.domain.Routine
 import com.ilsecondodasinistra.parakeet.domain.RoutineColors
+import com.ilsecondodasinistra.parakeet.domain.RoutineRules
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.domain.TaskLabels
 import com.ilsecondodasinistra.parakeet.ui.LcdText
@@ -89,6 +91,7 @@ import com.ilsecondodasinistra.parakeet.ui.main.BufferHint
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel
 import com.ilsecondodasinistra.parakeet.ui.main.MainViewModel.TaskEdit
 import com.ilsecondodasinistra.parakeet.ui.main.WeekdayChips
+import com.ilsecondodasinistra.parakeet.ui.main.fullName
 import com.ilsecondodasinistra.parakeet.ui.main.letter
 import com.ilsecondodasinistra.parakeet.ui.main.shortList
 import com.ilsecondodasinistra.parakeet.ui.main.uiColor
@@ -102,6 +105,18 @@ import java.time.LocalTime
 @Composable
 fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> Unit, onEdit: (Long) -> Unit) {
     var deleteId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var conflictId by rememberSaveable { mutableStateOf<Long?>(null) }
+    state.routines.firstOrNull { it.id == conflictId }?.let { r ->
+        val conflicts = RoutineRules.conflicts(r.id, r.days, state.routines)
+        if (conflicts.isNotEmpty()) {
+            RoutineConflictDialog(
+                name = r.name,
+                conflicts = conflicts,
+                onConfirm = { conflictId = null; viewModel.setRoutineEnabled(r, true, alsoDisable = conflicts.map { it.routine }) },
+                onDismiss = { conflictId = null },
+            )
+        }
+    }
     state.routines.firstOrNull { it.id == deleteId }?.let { r ->
         AlertDialog(
             onDismissRequest = { deleteId = null },
@@ -152,7 +167,11 @@ fun RoutinesScreen(state: MainUiState, viewModel: MainViewModel, onBack: () -> U
                         routine = r,
                         totalMinutes = state.tasks.filter { it.id in r.taskIds }.sumOf { it.minutes },
                         onClick = { onEdit(r.id) },
-                        onToggle = { viewModel.setRoutineEnabled(r, it) },
+                        onToggle = { on ->
+                            // Switching on over days another routine that is on covers: explain instead of doing it
+                            if (on && RoutineRules.conflicts(r.id, r.days, state.routines).isNotEmpty()) conflictId = r.id
+                            else viewModel.setRoutineEnabled(r, on)
+                        },
                         onDuplicate = { viewModel.duplicateRoutine(r) { id -> onEdit(id) } },
                         onDelete = { deleteId = r.id },
                     )
@@ -221,17 +240,36 @@ private fun RoutineCard(
                         LcdText(routine.exitTime.lcd(), 30.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                // Week at a glance: the letters of its days in its colour
+                // Week at a glance: its days in a circle of its colour; the other days almost disappear
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
                     DayOfWeek.entries.forEach { d ->
                         val on = d in routine.days
-                        Text(
-                            d.letter(),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (on) FontWeight.Black else FontWeight.Normal,
-                            color = if (on && routine.enabled) routine.uiColor() else MaterialTheme.colorScheme.outline,
-                        )
+                        val fill = when {
+                            !on -> Color.Transparent
+                            routine.enabled -> routine.uiColor()
+                            else -> routine.uiColor().copy(alpha = 0.3f)
+                        }
+                        Box(Modifier.size(28.dp).clip(CircleShape).background(fill), contentAlignment = Alignment.Center) {
+                            Text(
+                                d.letter(),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (on) FontWeight.Black else FontWeight.Normal,
+                                color = when {
+                                    on && routine.enabled -> Color(0xFF1A2205)
+                                    on -> MaterialTheme.colorScheme.onSurface
+                                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                },
+                            )
+                        }
                     }
+                }
+                if (routine.days.isEmpty()) {
+                    Text(
+                        stringResource(R.string.routine_days_none),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDuplicate, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -294,6 +332,9 @@ fun RoutineEditorScreen(
     var editingId by rememberSaveable { mutableStateOf<Long?>(null) }
     var pendingRaw by rememberSaveable { mutableStateOf<String?>(null) }
     var showPicker by rememberSaveable { mutableStateOf(false) }
+    // Routines the user agreed to switch off (they cover days this one needs); applied on save. "toggle" or "day:N".
+    var disabledOthers by rememberSaveable { mutableStateOf<List<Long>>(emptyList()) }
+    var conflictAsk by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { if (existing == null) color = viewModel.nextRoutineColor() }
 
@@ -305,14 +346,20 @@ fun RoutineEditorScreen(
     val routineTasks = state.tasks.filter { it.id in taskIds }.map { it.withEdit() }
     val total = routineTasks.sumOf { it.minutes }
     val labels = remember(state.tasks, state.routines) { TaskLabels.of(state.tasks, state.routines) }
-    val owners = state.routines.filter { it.id != routineId }.flatMap { r -> r.days.map { it to r } }.toMap()
-    val moved = daySet.mapNotNull { d -> owners[d]?.let { d to it } }
+    // Other routines as they will be once saved; only those that are on can clash, and only with a routine that is on
+    val others = state.routines.filter { it.id != routineId }.map { if (it.id in disabledOthers) it.copy(enabled = false) else it }
+    val owners: Map<DayOfWeek, Routine> = if (enabled) others.filter { it.enabled }.flatMap { r -> r.days.map { it to r } }.toMap() else emptyMap()
 
-    fun toggleDay(d: DayOfWeek) {
+    fun applyDay(d: DayOfWeek) {
         days = if (d.value in days) days - d.value else days + d.value
         if (!nameEdited) {
             name = AlarmPlanner.suggestedName(days.map { DayOfWeek.of(it) }.toSet(), weekdaysName, weekendName, fallbackName)
         }
+    }
+
+    /** A day another routine that is on covers is not taken silently: the user decides whether to switch that one off. */
+    fun toggleDay(d: DayOfWeek) {
+        if (d.value !in days && owners[d] != null) conflictAsk = "day:${d.value}" else applyDay(d)
     }
 
     fun buildRoutine() = Routine(
@@ -327,13 +374,13 @@ fun RoutineEditorScreen(
     )
 
     fun save() {
-        viewModel.saveRoutine(buildRoutine(), forDate, edits)
+        viewModel.saveRoutine(buildRoutine(), forDate, edits, disabledOthers)
         onBack()
     }
 
     /** Saves what is on screen, then opens a copy of it (same exit time and activities, no days). */
     fun duplicate() {
-        viewModel.saveRoutine(buildRoutine(), null, edits) { saved -> viewModel.duplicateRoutine(saved, onDuplicated) }
+        viewModel.saveRoutine(buildRoutine(), null, edits, disabledOthers) { saved -> viewModel.duplicateRoutine(saved, onDuplicated) }
     }
 
     fun putEdit(task: Task, newName: String, newMinutes: Int, onlyHere: Boolean) {
@@ -406,7 +453,6 @@ fun RoutineEditorScreen(
                 }
                 item {
                     Label(R.string.routine_days)
-                    val movedPattern = stringResource(R.string.routine_days_moved)
                     WeekdayChips(
                         selected = daySet,
                         color = Color(color),
@@ -415,9 +461,6 @@ fun RoutineEditorScreen(
                     )
                     Text(
                         when {
-                            moved.isNotEmpty() -> moved.groupBy({ it.second.name }, { it.first }).entries.joinToString(" · ") { (from, ds) ->
-                                String.format(movedPattern, ds.toSet().shortList(), from)
-                            }
                             daySet.isEmpty() -> stringResource(R.string.routine_days_none)
                             else -> stringResource(R.string.onb_when_weekly, daySet.shortList())
                         },
@@ -430,7 +473,9 @@ fun RoutineEditorScreen(
                     item {
                         Row(
                             Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
-                                .toggleable(value = enabled, role = Role.Switch, onValueChange = { enabled = it })
+                                .toggleable(value = enabled, role = Role.Switch, onValueChange = { on ->
+                                    if (on && RoutineRules.conflicts(routineId, daySet, others).isNotEmpty()) conflictAsk = "toggle" else enabled = on
+                                })
                                 .heightIn(min = 56.dp).padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -520,6 +565,34 @@ fun RoutineEditorScreen(
 
     if (pickTime) {
         TimePickerDialog(initial = exitTime, onConfirm = { exit = it.toSecondOfDay(); pickTime = false }, onDismiss = { pickTime = false })
+    }
+    conflictAsk?.let { ask ->
+        if (ask == "toggle") {
+            val conflicts = RoutineRules.conflicts(routineId, daySet, others)
+            if (conflicts.isNotEmpty()) {
+                RoutineConflictDialog(
+                    name = name.trim().ifEmpty { fallbackName },
+                    conflicts = conflicts,
+                    onConfirm = { disabledOthers = disabledOthers + conflicts.map { it.routine.id }; enabled = true; conflictAsk = null },
+                    onDismiss = { conflictAsk = null },
+                )
+            }
+        } else {
+            val day = DayOfWeek.of(ask.removePrefix("day:").toInt())
+            owners[day]?.let { owner ->
+                AlertDialog(
+                    onDismissRequest = { conflictAsk = null },
+                    title = { Text(stringResource(R.string.routine_conflict_title)) },
+                    text = { Text(stringResource(R.string.routine_conflict_day_body, day.fullName().replaceFirstChar { it.uppercase() }, owner.name)) },
+                    confirmButton = {
+                        TextButton(onClick = { disabledOthers = disabledOthers + owner.id; applyDay(day); conflictAsk = null }) {
+                            Text(stringResource(R.string.routine_conflict_turn_off, owner.name))
+                        }
+                    },
+                    dismissButton = { TextButton(onClick = { conflictAsk = null }) { Text(stringResource(R.string.cancel)) } },
+                )
+            }
+        }
     }
     state.tasks.firstOrNull { it.id == editingId }?.let { base ->
         TaskDialog(
@@ -644,4 +717,29 @@ private fun parseEdit(raw: String): TaskEdit? {
     val p = raw.split('\t', limit = 4)
     if (p.size < 4) return null
     return TaskEdit(p[0].toLongOrNull() ?: return null, p[3], p[2].toIntOrNull() ?: return null, p[1] == "H")
+}
+
+/** "You can't switch this routine on: another one that is on already covers these days", with the way out. */
+@Composable
+private fun RoutineConflictDialog(name: String, conflicts: List<DayConflict>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val line = stringResource(R.string.routine_conflict_line)
+    val lines = conflicts.joinToString("\n") { String.format(line, it.routine.name, it.days.shortList()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.routine_conflict_title)) },
+        text = { Text(stringResource(R.string.routine_conflict_body, name, lines)) },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onConfirm) {
+                    Text(
+                        if (conflicts.size == 1) stringResource(R.string.routine_conflict_disable_one, conflicts[0].routine.name)
+                        else stringResource(R.string.routine_conflict_disable_many),
+                    )
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+    )
 }

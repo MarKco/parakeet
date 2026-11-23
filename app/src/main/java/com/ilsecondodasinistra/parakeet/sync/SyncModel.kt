@@ -76,17 +76,18 @@ data class SyncState(
     }
 
     /**
-     * A weekday belongs to one routine at most (as `PlanRepository.setDays` enforces): where the merge gave one to two,
-     * the most recently edited keeps it. Nothing is stamped, so every device reaches the same result on its own.
+     * Two routines that are ON never share a weekday (as `PlanRepository.setDays` enforces): where the merge gave one to
+     * two, the most recently edited keeps it. A routine that is off keeps its days and never takes part. Nothing is
+     * stamped, so every device reaches the same result on its own.
      */
     fun withExclusiveDays(): SyncState {
-        val live = routines.values.filter { !it.deleted }
+        val live = routines.values.filter { !it.deleted && it.enabled }
         if (live.size < 2) return this
         val winner = (0..6).associateWith { bit ->
             live.filter { it.daysMask and (1 shl bit) != 0 }.maxWithOrNull(compareBy<RoutineRec> { it.updatedAt }.thenBy { it.uid })?.uid
         }
         val fixed = routines.mapValues { (uid, r) ->
-            if (r.deleted) r
+            if (r.deleted || !r.enabled) r
             else {
                 val mask = (0..6).fold(0) { acc, bit -> if (r.daysMask and (1 shl bit) != 0 && winner[bit] == uid) acc or (1 shl bit) else acc }
                 if (mask == r.daysMask) r else r.copy(daysMask = mask)

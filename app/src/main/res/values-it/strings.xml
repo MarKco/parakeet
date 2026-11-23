@@ -191,10 +191,16 @@
     <string name="routine_color">Colore</string>
     <string name="routine_days">Giorni</string>
     <string name="routine_days_none">Nessun giorno: la usi per singole date</string>
-    <string name="routine_days_moved">%1$s spostato da %2$s</string>
     <string name="routine_enabled">Attiva</string>
     <string name="routine_card_wake">Sveglia</string>
     <string name="routine_card_exit">Uscita</string>
+    <string name="routine_conflict_title">Giorni già coperti</string>
+    <string name="routine_conflict_body">Non puoi ancora attivare «%1$s».\n%2$s</string>
+    <string name="routine_conflict_line">«%1$s» è attiva e copre %2$s.</string>
+    <string name="routine_conflict_disable_one">Disattiva «%1$s» e attiva questa</string>
+    <string name="routine_conflict_disable_many">Disattiva le altre e attiva questa</string>
+    <string name="routine_conflict_day_body">%1$s è già coperto da «%2$s», che è attiva. Vuoi disattivare «%2$s» per usare quel giorno qui?</string>
+    <string name="routine_conflict_turn_off">Disattiva «%1$s»</string>
     <string name="routine_card_duplicate">Duplica</string>
     <string name="routine_duplicate">Duplica routine</string>
     <string name="routine_copy_name">%1$s (copia)</string>

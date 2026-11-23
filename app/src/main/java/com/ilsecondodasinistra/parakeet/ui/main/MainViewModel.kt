@@ -282,7 +282,7 @@ class MainViewModel @Inject constructor(
         val routine = state.value.routines.firstOrNull { it.id == routineId } ?: return@launch
         val weekday = day.date.dayOfWeek
         if (always) {
-            plan.setDays(routine.id, routine.days + weekday)
+            plan.setDays(routine.id, routine.days + weekday, takeOver = true)
             if (!routine.enabled) plan.setEnabled(routine.copy(days = routine.days + weekday), true)
             plan.clearDayPlan(day.date)
         } else {
@@ -406,8 +406,11 @@ class MainViewModel @Inject constructor(
         routine: Routine,
         forDate: LocalDate?,
         edits: List<TaskEdit> = emptyList(),
+        disable: List<Long> = emptyList(),
         onSaved: (Routine) -> Unit = {},
     ) = viewModelScope.launch {
+        // Routines the user agreed to switch off because they covered days this one needs
+        state.value.routines.filter { it.id in disable }.forEach { plan.setEnabled(it, false) }
         var taskIds = routine.taskIds
         edits.forEach { e ->
             val task = state.value.tasks.firstOrNull { it.id == e.taskId } ?: return@forEach
@@ -448,7 +451,9 @@ class MainViewModel @Inject constructor(
         onCreated(id)
     }
 
-    fun setRoutineEnabled(routine: Routine, enabled: Boolean) = viewModelScope.launch {
+    /** Switches [routine]; [alsoDisable] are routines the user agreed to switch off first (they covered its days). */
+    fun setRoutineEnabled(routine: Routine, enabled: Boolean, alsoDisable: List<Routine> = emptyList()) = viewModelScope.launch {
+        alsoDisable.forEach { plan.setEnabled(it, false) }
         plan.setEnabled(routine, enabled)
         afterChange()
     }

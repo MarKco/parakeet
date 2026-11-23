@@ -54,6 +54,17 @@ class SyncMergeTest {
         assertEquals(fixed, fixed.withExclusiveDays())
     }
 
+    @Test fun aRoutineThatIsOffKeepsItsDays() {
+        val s = state(routines = listOf(routine("off", 0b0000111, 100, enabled = false), routine("on", 0b0000110, 200)))
+        val fixed = s.withExclusiveDays()
+        assertEquals(0b0000111, fixed.routines["off"]!!.daysMask)
+        assertEquals(0b0000110, fixed.routines["on"]!!.daysMask)
+        // and an older routine that is on still loses to a newer one that is on, whatever an off one holds
+        val three = state(routines = listOf(routine("off", 0b1, 300, enabled = false), routine("old", 0b1, 100), routine("new", 0b1, 200)))
+        assertEquals(0, three.withExclusiveDays().routines["old"]!!.daysMask)
+        assertEquals(0b1, three.withExclusiveDays().routines["off"]!!.daysMask)
+    }
+
     @Test fun deletedRoutinesDoNotHoldDays() {
         val s = state(routines = listOf(routine("gone", 0b1, 300, deleted = true), routine("live", 0b1, 100)))
         assertEquals(0b1, s.withExclusiveDays().routines["live"]!!.daysMask)
