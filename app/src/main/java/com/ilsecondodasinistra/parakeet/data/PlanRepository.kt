@@ -52,7 +52,7 @@ class PlanRepository @Inject constructor(
     // ---- routines ----------------------------------------------------------------------------
 
     /**
-     * Creates or updates [routine]; its days are removed from every other routine. Returns its id.
+     * Creates or updates [routine]; if it is on, its days are removed from the other routines that are on. Returns its id.
      * A [seed] routine (onboarding, 5.0 conversion) keeps `updatedAt` 0: it does not travel to other devices.
      */
     suspend fun saveRoutine(routine: Routine, seed: Boolean = false): Long {
@@ -68,14 +68,20 @@ class PlanRepository @Inject constructor(
         return id
     }
 
-    /** Weekly assignment, exclusive: a weekday belongs to one routine at most. */
-    suspend fun setDays(routineId: Long, days: Set<DayOfWeek>, stamp: Long = clock.millis()) {
+    /**
+     * Weekly assignment. Routines that are on never share a weekday: when [routineId] is on (or [takeOver], used when the
+     * user picks it for a weekday and it is about to be switched on), its days are removed from the other routines that
+     * are on. A routine that is off keeps its days and is not touched.
+     */
+    suspend fun setDays(routineId: Long, days: Set<DayOfWeek>, stamp: Long = clock.millis(), takeOver: Boolean = false) {
         val all = dao.routines()
         val now = clock.millis()
+        val mask = days.toMask()
+        val strip = takeOver || all.firstOrNull { it.id == routineId }?.enabled == true
         val updated = all.map {
             when {
-                it.id == routineId -> it.copy(daysMask = days.toMask(), updatedAt = stamp)
-                it.daysMask and days.toMask() != 0 -> it.copy(daysMask = it.daysMask and days.toMask().inv(), updatedAt = now)
+                it.id == routineId -> it.copy(daysMask = mask, updatedAt = stamp)
+                strip && it.enabled && it.daysMask and mask != 0 -> it.copy(daysMask = it.daysMask and mask.inv(), updatedAt = now)
                 else -> it
             }
         }

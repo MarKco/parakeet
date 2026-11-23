@@ -120,6 +120,7 @@ import com.ilsecondodasinistra.parakeet.R
 import com.ilsecondodasinistra.parakeet.ui.postwake.PostWakeActivity
 import com.ilsecondodasinistra.parakeet.data.AlarmMode
 import com.ilsecondodasinistra.parakeet.data.PlanMode
+import com.ilsecondodasinistra.parakeet.domain.TaskLabels
 import com.ilsecondodasinistra.parakeet.domain.DaySchedule
 import com.ilsecondodasinistra.parakeet.domain.Task
 import com.ilsecondodasinistra.parakeet.ui.AlarmIntroDialog
@@ -140,6 +141,9 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
+
+/** Swipe a row to delete the activity. Off for now: removing is done from the routine editor / the edit dialog. */
+private const val SWIPE_TO_DELETE = false
 
 private val ScreenPadding = 16.dp
 private val ContentMaxWidth = 640.dp
@@ -283,6 +287,7 @@ fun MainScreen(
         },
     ) { padding ->
         // The activity list, shared by both modes: [checkedIds] are the ticked activities
+        val taskLabels = remember(state.tasks, state.routines) { TaskLabels.of(state.tasks, state.routines) }
         fun LazyListScope.taskItems(checkedIds: Set<Long>, onToggle: (Task) -> Unit) {
         item(key = "section") { SectionHeader(selected = checkedIds.size, total = state.tasks.size) }
         if (state.tasks.isEmpty()) {
@@ -297,13 +302,21 @@ fun MainScreen(
             }
         }
         items(state.tasks, key = { it.id }) { task ->
-            SwipeableTaskRow(
-                task = task.copy(checked = task.id in checkedIds),
-                onToggle = onToggle,
-                onEdit = { editingTaskId = it.id },
-                onRemove = viewModel::removeTask,
-                modifier = Modifier.animateItem(),
-            )
+            // Two activities with the same name (one made "only in a routine") show their routines in brackets
+            val shown = task.copy(checked = task.id in checkedIds, name = taskLabels[task.id] ?: task.name)
+            if (SWIPE_TO_DELETE) {
+                SwipeableTaskRow(
+                    task = shown,
+                    onToggle = onToggle,
+                    onEdit = { editingTaskId = it.id },
+                    onRemove = { shownTask -> state.tasks.firstOrNull { it.id == shownTask.id }?.let(viewModel::removeTask) },
+                    modifier = Modifier.animateItem(),
+                )
+            } else {
+                Box(Modifier.animateItem()) {
+                    TaskRow(shown, RoundedCornerShape(20.dp), onToggle, onEdit = { editingTaskId = it.id })
+                }
+            }
         }
         item(key = "add") {
             OutlinedButton(

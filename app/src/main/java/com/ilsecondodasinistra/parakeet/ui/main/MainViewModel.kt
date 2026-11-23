@@ -282,7 +282,7 @@ class MainViewModel @Inject constructor(
         val routine = state.value.routines.firstOrNull { it.id == routineId } ?: return@launch
         val weekday = day.date.dayOfWeek
         if (always) {
-            plan.setDays(routine.id, routine.days + weekday)
+            plan.setDays(routine.id, routine.days + weekday, takeOver = true)
             if (!routine.enabled) plan.setEnabled(routine.copy(days = routine.days + weekday), true)
             plan.clearDayPlan(day.date)
         } else {
@@ -394,9 +394,34 @@ class MainViewModel @Inject constructor(
 
     // ---- routines --------------------------------------------------------------------------------
 
-    /** Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only. */
-    fun saveRoutine(routine: Routine, forDate: LocalDate?) = viewModelScope.launch {
-        val id = plan.saveRoutine(routine)
+    /** Edit of an activity made in the routine editor, applied when the routine is saved. */
+    data class TaskEdit(val taskId: Long, val name: String, val minutes: Int, val onlyHere: Boolean)
+
+    /**
+     * Saves [routine]; when created for [forDate] and not covering its weekday, it is used on that date only.
+     * [edits]: "everywhere" ones change the shared activity; "only here" ones give the routine its own copy of it
+     * (the other routines keep the original). Calls [onSaved] with the saved routine once it is stored.
+     */
+    fun saveRoutine(
+        routine: Routine,
+        forDate: LocalDate?,
+        edits: List<TaskEdit> = emptyList(),
+        disable: List<Long> = emptyList(),
+        onSaved: (Routine) -> Unit = {},
+    ) = viewModelScope.launch {
+        // Routines the user agreed to switch off because they covered days this one needs
+        state.value.routines.filter { it.id in disable }.forEach { plan.setEnabled(it, false) }
+        var taskIds = routine.taskIds
+        edits.forEach { e ->
+            val task = state.value.tasks.firstOrNull { it.id == e.taskId } ?: return@forEach
+            if (e.onlyHere) {
+                if (e.taskId in taskIds) taskIds = taskIds - e.taskId + tasks.add(e.name, e.minutes, buffer = task.buffer)
+            } else {
+                tasks.update(task.copy(name = e.name, minutes = e.minutes))
+            }
+        }
+        val toSave = routine.copy(taskIds = taskIds)
+        val id = plan.saveRoutine(toSave)
         // One-time "use this routine" plans on days it now covers every week are redundant
         if (routine.enabled) {
             plan.currentOverrides().values
@@ -409,9 +434,26 @@ class MainViewModel @Inject constructor(
             selectedDate.value = forDate
         }
         afterChange()
+        onSaved(toSave.copy(id = id))
     }
 
-    fun setRoutineEnabled(routine: Routine, enabled: Boolean) = viewModelScope.launch {
+    /** New routine from [routine]: same exit time and activities, a new colour, no days; [onCreated] gets its id. */
+    fun duplicateRoutine(routine: Routine, onCreated: (Long) -> Unit) = viewModelScope.launch {
+        val copy = routine.copy(
+            id = 0,
+            name = context.getString(R.string.routine_copy_name, routine.name),
+            color = plan.nextColor(),
+            days = emptySet(),
+            enabled = true,
+        )
+        val id = plan.saveRoutine(copy)
+        afterChange()
+        onCreated(id)
+    }
+
+    /** Switches [routine]; [alsoDisable] are routines the user agreed to switch off first (they covered its days). */
+    fun setRoutineEnabled(routine: Routine, enabled: Boolean, alsoDisable: List<Routine> = emptyList()) = viewModelScope.launch {
+        alsoDisable.forEach { plan.setEnabled(it, false) }
         plan.setEnabled(routine, enabled)
         afterChange()
     }

@@ -32,8 +32,8 @@ class FakeStore(var state: SyncState = SyncState(), var device: DeviceSettings =
 }
 
 fun task(uid: String, name: String = uid, at: Long, deleted: Boolean = false) = TaskRec(uid, name, 10, false, 0, at, deleted)
-fun routine(uid: String, mask: Int = 0, at: Long, tasks: List<String> = emptyList(), deleted: Boolean = false) =
-    RoutineRec(uid, uid, 0, 480, mask, true, 0, tasks, at, deleted)
+fun routine(uid: String, mask: Int = 0, at: Long, tasks: List<String> = emptyList(), deleted: Boolean = false, enabled: Boolean = true) =
+    RoutineRec(uid, uid, 0, 480, mask, enabled, 0, tasks, at, deleted)
 fun plan(day: Long, routineUid: String?, at: Long, deleted: Boolean = false) =
     DayPlanRec(day, "ROUTINE", routineUid, null, emptyList(), at, deleted)
 fun state(vararg tasks: TaskRec, routines: List<RoutineRec> = emptyList(), plans: List<DayPlanRec> = emptyList(), settings: Map<String, StampedValue> = emptyMap()) =
