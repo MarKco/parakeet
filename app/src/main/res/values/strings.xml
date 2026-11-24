@@ -338,6 +338,9 @@
     <string name="postwake_status_on_time">On schedule</string>
     <string name="postwake_congrats">Well done, you\'ve finished everything and you\'re ahead of time!</string>
     <string name="notif_postwake_late">Running late · leave at %1$s</string>
+    <string name="cd_postwake_start">Start this activity now</string>
+    <string name="cd_torch_on">Turn the flashlight on</string>
+    <string name="cd_torch_off">Turn the flashlight off</string>
     <string name="cd_postwake_beyond">Does not fit before the exit</string>
     <string name="channel_postwake_alert_name">Running late</string>
     <string name="channel_postwake_alert_description">One quiet alert when the plan no longer fits before you leave</string>

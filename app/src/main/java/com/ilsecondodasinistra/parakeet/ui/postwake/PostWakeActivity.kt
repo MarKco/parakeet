@@ -76,7 +76,7 @@ class PostWakeActivity : ComponentActivity() {
                     }
                 }
                 if (timeline != null) {
-                    PostWakeScreen(timeline, onLockScreen = onLockScreen.value, onAct = viewModel::act, onClose = ::finish)
+                    PostWakeScreen(timeline, onLockScreen = onLockScreen.value, onAct = viewModel::act, onStart = viewModel::start, onClose = ::finish)
                 }
             }
         }

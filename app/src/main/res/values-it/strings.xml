@@ -324,6 +324,9 @@
     <string name="postwake_status_on_time">In orario</string>
     <string name="postwake_congrats">Complimenti, hai finito tutto e sei in anticipo!</string>
     <string name="notif_postwake_late">In ritardo · esci alle %1$s</string>
+    <string name="cd_postwake_start">Inizia ora questa attività</string>
+    <string name="cd_torch_on">Accendi la torcia</string>
+    <string name="cd_torch_off">Spegni la torcia</string>
     <string name="cd_postwake_beyond">Non entra prima dell\'uscita</string>
     <string name="channel_postwake_alert_name">Ritardo</string>
     <string name="channel_postwake_alert_description">Un solo avviso silenzioso quando il piano non entra più prima dell\'uscita</string>

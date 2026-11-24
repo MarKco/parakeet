@@ -3,6 +3,7 @@ package com.ilsecondodasinistra.parakeet
 import com.ilsecondodasinistra.parakeet.domain.PostWakeAction.DEFER
 import com.ilsecondodasinistra.parakeet.domain.PostWakeAction.DONE
 import com.ilsecondodasinistra.parakeet.domain.PostWakeAction.SKIP
+import com.ilsecondodasinistra.parakeet.domain.PostWakeAction.START
 import com.ilsecondodasinistra.parakeet.domain.PostWakeEvent
 import com.ilsecondodasinistra.parakeet.domain.PostWakeTimeline
 import com.ilsecondodasinistra.parakeet.domain.StepStatus
@@ -114,39 +115,39 @@ class PostWakeTimelineTest {
     }
 
     @Test fun deferKeepsTheMinutesStillNeeded() {
-        // Doccia deferred at 07:05 after 5 of its 15 min: 10 min are queued at the back
+        // Doccia deferred at 07:05 after 5 of its 15 min: 10 min come back right after Colazione (they swap)
         val t = compute(at(7, 8), PostWakeEvent(1, DEFER, at(7, 5)))
-        assertEquals(listOf("Doccia", "Colazione", "Vestirsi", "Doccia"), t.segments.map { it.task.name })
+        assertEquals(listOf("Doccia", "Colazione", "Doccia", "Vestirsi"), t.segments.map { it.task.name })
         assertEquals(StepStatus.DEFERRED, t.segments[0].status)
         assertEquals(at(7, 5), t.segments[0].endMillis)
-        assertEquals(listOf("Colazione", "Vestirsi", "Doccia"), t.steps.map { it.task.name })
+        assertEquals(listOf("Colazione", "Doccia", "Vestirsi"), t.steps.map { it.task.name })
         assertEquals(0, t.currentIndex)
-        val later = t.steps[2]
+        val later = t.steps[1]
         assertTrue(later.postponed)
-        assertEquals(at(7, 35), later.startMillis)
-        assertEquals(exit, later.endMillis)
+        assertEquals(at(7, 25), later.startMillis)
+        assertEquals(at(7, 35), later.endMillis)
         assertEquals(0L, t.marginMillis)
         assertEquals(0L, t.overflowMillis) // the scale never changes
     }
 
     @Test fun deferKeepsTheColourOfTheOriginalPosition() {
         val t = compute(at(7, 8), PostWakeEvent(1, DEFER, at(7, 5)))
-        assertEquals(listOf(0, 1, 2, 0), t.segments.map { it.colorIndex })
+        assertEquals(listOf(0, 1, 0, 2), t.segments.map { it.colorIndex })
     }
 
     @Test fun deferNeverQueuesLessThanFiveMinutes() {
         // 13 of 15 min used: 2 would be left, 5 are queued
         val short = compute(at(7, 14), PostWakeEvent(1, DEFER, at(7, 13)))
-        assertEquals(5 * minute, short.steps.last().let { it.endMillis - it.startMillis })
+        assertEquals(5 * minute, short.steps[1].let { it.endMillis - it.startMillis })
     }
 
     @Test fun deferAfterOverrunQueuesFiveMinutesAndAddsToTheLateness() {
-        // Doccia (15 min) deferred at 07:20: nothing was left, 5 min are queued behind the 30 of the others
+        // Doccia (15 min) deferred at 07:20: nothing was left, 5 min are queued after Colazione
         val t = compute(at(7, 22), PostWakeEvent(1, DEFER, at(7, 20)))
-        assertEquals(listOf("Colazione", "Vestirsi", "Doccia"), t.steps.map { it.task.name })
-        val later = t.steps.last()
-        assertEquals(at(7, 50), later.startMillis)
-        assertEquals(at(7, 55), later.endMillis)
+        assertEquals(listOf("Colazione", "Doccia", "Vestirsi"), t.steps.map { it.task.name })
+        val later = t.steps[1]
+        assertEquals(at(7, 40), later.startMillis)
+        assertEquals(at(7, 45), later.endMillis)
         assertEquals(10 * minute, t.overflowMillis)
     }
 
@@ -168,9 +169,42 @@ class PostWakeTimelineTest {
 
     @Test fun aTaskCanBePutOffMoreThanOnce() {
         val t = compute(at(7, 12), PostWakeEvent(1, DEFER, at(7, 5)), PostWakeEvent(2, DEFER, at(7, 10)))
-        assertEquals(listOf("Vestirsi", "Doccia", "Colazione"), t.steps.map { it.task.name })
+        // Doccia swaps with Colazione, then Colazione swaps with Doccia back: the second "later" undoes the first
+        assertEquals(listOf("Doccia", "Colazione", "Vestirsi"), t.steps.map { it.task.name })
         assertEquals(StepStatus.CURRENT, t.steps[0].status)
         assertEquals(2, t.eventCount)
+    }
+
+    @Test fun startingAnotherPausesTheCurrentOneAndKeepsTheListStill() {
+        // At 07:05 Doccia (5 of 15 min used) is paused to start Vestirsi
+        val t = compute(at(7, 8), PostWakeEvent(1, START, at(7, 5), 3))
+        assertEquals(listOf("Doccia", "Vestirsi", "Doccia", "Colazione"), t.segments.map { it.task.name })
+        assertEquals(StepStatus.DEFERRED, t.segments[0].status)
+        assertEquals(StepStatus.CURRENT, t.segments[1].status)
+        assertEquals(at(7, 5), t.segments[1].startMillis)
+        assertEquals(listOf(0, 2, 0, 1), t.segments.map { it.colorIndex })
+        // The list does not move
+        assertEquals(listOf("Doccia", "Colazione", "Vestirsi"), t.steps.map { it.task.name })
+        assertEquals(2, t.currentIndex)
+        assertEquals(StepStatus.UPCOMING, t.steps[0].status)
+        assertEquals(10 * minute, t.steps[0].let { it.endMillis - it.startMillis })
+        assertEquals(1, t.eventCount)
+    }
+
+    @Test fun aPausedTaskCanBeResumedAndKeepsItsMinutes() {
+        val t = compute(at(7, 20), PostWakeEvent(1, START, at(7, 5), 3), PostWakeEvent(3, START, at(7, 10), 1))
+        // Vestirsi's rest goes back after Colazione, its place in the original order
+        assertEquals(listOf("Doccia", "Vestirsi", "Doccia", "Colazione", "Vestirsi"), t.segments.map { it.task.name })
+        assertEquals(StepStatus.CURRENT, t.segments[2].status)
+        assertEquals(listOf("Doccia", "Colazione", "Vestirsi"), t.steps.map { it.task.name })
+        assertEquals(0, t.currentIndex)
+        assertEquals(2, t.eventCount)
+    }
+
+    @Test fun startedEventsRoundTrip() {
+        val events = listOf(PostWakeEvent(1, START, 1000L, 3), PostWakeEvent(3, DONE, 2000L))
+        assertEquals(events, PostWakeTimeline.decode(PostWakeTimeline.encode(events)))
+        assertTrue(PostWakeTimeline.decode("1:T:1000").isEmpty())
     }
 
     @Test fun anEventNeverEndsTheSlotItOpened() {

@@ -130,6 +130,21 @@ class PostWake @Inject constructor(
         refreshLocked()
     }
 
+    /**
+     * The user begins [targetId] without finishing the current activity: that one is paused and [targetId] is
+     * current at once. Ignored unless [targetId] is still waiting.
+     */
+    suspend fun start(targetId: Long) = mutex.withLock {
+        val session = settings.current().postWakeSession ?: return@withLock
+        val now = System.currentTimeMillis()
+        val state = timeline(session, tasks.tasks.first(), now)
+        val current = state.current ?: return@withLock
+        if (current.task.id == targetId) return@withLock
+        if (state.steps.none { it.task.id == targetId && it.status == StepStatus.UPCOMING }) return@withLock
+        settings.appendPostWakeEvent(PostWakeEvent(current.task.id, PostWakeAction.START, now, targetId))
+        refreshLocked()
+    }
+
     /** Re-reads the session and brings notification and wake-ups in line (boundary reached, boot, time change). */
     suspend fun refresh() = mutex.withLock { refreshLocked() }
 
@@ -191,7 +206,7 @@ class PostWake @Inject constructor(
             .setProgress(spanSeconds, elapsedSeconds, false)
         if (current != null) {
             // The system draws the live clock: down to the end of the planned time, up once the activity runs over
-            val next = state.steps.drop(state.currentIndex + 1).firstOrNull { it.status == StepStatus.UPCOMING }
+            val next = state.segments.firstOrNull { it.status == StepStatus.UPCOMING } // the next in time, not in the list
             val text = when {
                 current.overrun -> context.getString(R.string.notif_postwake_late, exitTime)
                 next != null -> context.getString(R.string.notif_postwake_text_next, next.task.name, exitTime)

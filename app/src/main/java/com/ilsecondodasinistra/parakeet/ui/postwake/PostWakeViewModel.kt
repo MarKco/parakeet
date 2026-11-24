@@ -43,6 +43,11 @@ class PostWakeViewModel @Inject constructor(
         viewModelScope.launch { postWake.act(taskId, action) }
     }
 
+    /** The user begins another activity without finishing the current one. */
+    fun start(taskId: Long) {
+        viewModelScope.launch { postWake.start(taskId) }
+    }
+
     /** The screen is on: make sure the notification and the next wake-up match what it shows. */
     fun refresh() {
         viewModelScope.launch { postWake.refresh() }

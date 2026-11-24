@@ -106,11 +106,13 @@ private val TIME: DateTimeFormatter = DateTimeFormatter.ofLocalizedTime(FormatSt
 
 /**
  * Ring + list for the morning in progress. The current activity stays current until the user acts: "Done",
- * "Do it later" or "Skip for today". It is a list so that a postponed row can slide to the back in step with its
- * arc on the ring. Finishing the last activity with margin left starts a burst of confetti.
+ * "Do it later" (swaps with the next row, sliding in step with its arc on the ring) or "Skip for today". Tapping
+ * another waiting row starts it now and pauses the current one: the ring reorders, the list does not. Finishing the last activity with margin left starts a burst of confetti.
  */
 @Composable
-fun PostWakeScreen(state: TimelineState, onLockScreen: Boolean, onAct: (Long, PostWakeAction) -> Unit, onClose: () -> Unit) {
+fun PostWakeScreen(
+    state: TimelineState, onLockScreen: Boolean, onAct: (Long, PostWakeAction) -> Unit, onStart: (Long) -> Unit, onClose: () -> Unit,
+) {
     val context = LocalContext.current
     // No confetti for people who turned animations off
     val animationsOn = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f }
@@ -176,7 +178,7 @@ fun PostWakeScreen(state: TimelineState, onLockScreen: Boolean, onAct: (Long, Po
                     item(key = "ring") { RingHeader(state, callout, onLockScreen, lightHeader, onDismissCallout = { callout = null }) { ringCenter = it } }
                     items(state.steps, key = { it.task.id }) { step ->
                         StepRow(
-                            step, state, onAct,
+                            step, state, onAct, onStart,
                             Modifier.animateItem(placementSpec = tween(SLIDE_MILLIS, easing = FastOutSlowInEasing)),
                         )
                     }
@@ -345,7 +347,9 @@ private fun WaveSample(color: Color) {
 }
 
 @Composable
-private fun StepRow(step: StepState, state: TimelineState, onAct: (Long, PostWakeAction) -> Unit, modifier: Modifier = Modifier) {
+private fun StepRow(
+    step: StepState, state: TimelineState, onAct: (Long, PostWakeAction) -> Unit, onStart: (Long) -> Unit, modifier: Modifier = Modifier,
+) {
     val color = stepColor(step.colorIndex)
     val ink = MaterialTheme.colorScheme.onBackground
     val current = step.status == StepStatus.CURRENT
@@ -359,11 +363,15 @@ private fun StepRow(step: StepState, state: TimelineState, onAct: (Long, PostWak
     val contentAlpha by animateFloatAsState(if (faded) 0.38f else 1f, tween(SLIDE_MILLIS), label = "rowAlpha")
     val blurRadius by animateDpAsState(if (faded) 1.6.dp else 0.dp, tween(SLIDE_MILLIS), label = "rowBlur")
     val beyondDescription = stringResource(R.string.cd_postwake_beyond)
+    val startable = step.status == StepStatus.UPCOMING && state.currentIndex >= 0
+    val startLabel = stringResource(R.string.cd_postwake_start)
     Column(
         modifier
             .fillMaxWidth()
             .clip(shape)
             .background(fill)
+            // Tapping a waiting activity starts it now: the current one is paused
+            .then(if (startable) Modifier.clickable(onClickLabel = startLabel) { onStart(step.task.id) } else Modifier)
             .animateContentSize(tween(SLIDE_MILLIS / 2))
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
