@@ -360,6 +360,7 @@
     <string name="needs_internal_button">Go to Alarm</string>
     <string name="settings_tab_sync">Sync</string>
     <string name="settings_tab_backup">Backup</string>
+    <string name="sync_when_note">When it runs: when the app opens, 5 seconds after each change you make, and every 15 minutes while the app is open. With the app closed nothing is updated: open Parakeet to receive the changes from your other devices.</string>
     <string name="sync_enable_title">Sync with a folder</string>
     <string name="sync_enable_desc">Keeps activities, routines, plans and settings in step with your other devices, through a folder that an app like Syncthing keeps in sync.</string>
     <string name="sync_name_title">Name of this device</string>

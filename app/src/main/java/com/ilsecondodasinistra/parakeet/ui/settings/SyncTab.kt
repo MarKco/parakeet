@@ -126,6 +126,14 @@ internal fun SyncTab(viewModel: SyncViewModel = hiltViewModel()) {
         }
     }
 
+    // When a round runs, and that it does not run with the app closed
+    Text(
+        stringResource(R.string.sync_when_note),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+
     if (askName) {
         NameDialog(
             initial = s.deviceName,

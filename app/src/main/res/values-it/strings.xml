@@ -346,6 +346,7 @@
     <string name="needs_internal_button">Vai a Sveglia</string>
     <string name="settings_tab_sync">Sincronizzazione</string>
     <string name="settings_tab_backup">Backup</string>
+    <string name="sync_when_note">Quando gira: all\'apertura dell\'app, 5 secondi dopo ogni tua modifica e ogni 15 minuti mentre l\'app è aperta. Con l\'app chiusa non si aggiorna: per ricevere le modifiche degli altri dispositivi apri Parakeet.</string>
     <string name="sync_enable_title">Sincronizza con una cartella</string>
     <string name="sync_enable_desc">Tiene allineati attività, routine, piani e impostazioni con gli altri dispositivi, tramite una cartella che un\'app come Syncthing mantiene sincronizzata.</string>
     <string name="sync_name_title">Nome di questo dispositivo</string>
