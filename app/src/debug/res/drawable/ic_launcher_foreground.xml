@@ -6,17 +6,17 @@
     android:viewportWidth="108" android:viewportHeight="108">
   <group android:translateX="28.59" android:translateY="31.5" android:scaleX="0.0985" android:scaleY="0.0985">
     <!-- ears (left/right) -->
-    <path android:fillColor="#45112B"
+    <path android:fillColor="#62183D"
         android:pathData="M6,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0 M366,76a72,72 0 1,0 144,0a72,72 0 1,0 -144,0"/>
     <!-- body -->
-    <path android:fillColor="#45112B"
+    <path android:fillColor="#62183D"
         android:pathData="M18,270a241,241 0 1,0 482,0a241,241 0 1,0 -482,0"/>
     <!-- dial -->
-    <path android:fillColor="#C60767"
+    <path android:fillColor="#F71D8B"
         android:pathData="M94,272a166,166 0 1,0 332,0a166,166 0 1,0 -332,0"/>
     <!-- hands -->
-    <path android:strokeColor="#59253F" android:strokeWidth="22" android:pathData="M258,272L158,226 M262,270L358,172"/>
-    <path android:fillColor="#45112B"
+    <path android:strokeColor="#722F51" android:strokeWidth="22" android:pathData="M258,272L158,226 M262,270L358,172"/>
+    <path android:fillColor="#62183D"
         android:pathData="M233,272a27,27 0 1,0 54,0a27,27 0 1,0 -54,0"/>
     <!-- gloss -->
     <path android:pathData="M90,152a155,97 0 1,0 310,0a155,97 0 1,0 -310,0">
